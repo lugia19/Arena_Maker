@@ -26,6 +26,7 @@ Each fight should be in its own subfolder, and each fight folder should follow t
   - outro (Optional)
     - 0/1.wav: The audio files corresponding to the outro lines.
   - [SomeID]_logic.lua (Optional): A custom AI logic file. If you don't include one, you'll have to specify a logicId in data.json.
+  - bgm.wav (Optional): A track that will be used for background music. Currently non-functional, will be implemented at a later date.
 
 Note: Both image files and audio files can be almost any format, they'll be converted accordingly. Additionally, an example fight is included.
 
