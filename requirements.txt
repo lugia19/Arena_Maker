@@ -1,0 +1,7 @@
+wheel
+requests
+PyQt6
+xmltodict
+numpy
+soundfile
+pillow
