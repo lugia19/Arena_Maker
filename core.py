@@ -326,7 +326,7 @@ def compile_folder(progress_signal=None):
     # Main loop
     fight_order = config["folder_order"]
     fight_dirs = [os.path.join(paths["fights_directory"], fight_dir) for fight_dir in fight_order]
-    progress_signal.emit(0, "Adding parameters for fight 1")
+    progress_signal.emit(0, "Adding parameters for fight #1")
     for fight_index, subfolder_path in enumerate(fight_dirs):
         npc_chara_id = starting_npc_chara_id + fight_index
         arena_id = starting_arena_id + fight_index
@@ -452,7 +452,7 @@ def compile_folder(progress_signal=None):
             process_custom_logic_file(lua_file, npc_chara_id)
 
         process_audio_files(subfolder_path, account_id, npc_015_bnk)
-        progress_signal.emit(math.floor(75 / len(fight_dirs) * (fight_index+1)), f"Adding parameters for {fight_index+2}")
+        progress_signal.emit(math.floor(75 / len(fight_dirs) * (fight_index+1)), f"Adding parameters for fight #{fight_index+2}")
 
     progress_signal.emit(75, "Unpacking textures...")
     # Prep work for thumbnails and rank icons
