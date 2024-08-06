@@ -12,7 +12,8 @@ import soundfile as sf
 
 with open(os.path.join("resources", "constants.json"), "r") as f:
     constants = json.load(f)
-
+FIGHTS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fights")
+os.makedirs(FIGHTS_FOLDER, exist_ok=True)
 paths = {}
 
 baseline_ac = constants["baseline_ac"]
@@ -285,7 +286,7 @@ def compile_folder(progress_signal=None):
 
     resources_dir = os.path.join(os.path.dirname(__file__), "resources")
     paths["witchybnd_path"] = os.path.join(resources_dir, "witchybnd", "WitchyBND.exe")
-    paths["fights_directory"] = os.path.expanduser("~\\AppData\\Roaming\\lugia19\\Arena-Maker")
+    paths["fights_directory"] = FIGHTS_FOLDER
     paths["ffdec_path"] = os.path.join(resources_dir, "ffdec", "ffdec.bat")
     paths["rewwise_path"] = os.path.join(resources_dir, "rewwise")
     paths["conversion_script_path"] = os.path.join("wem_conversion.py")

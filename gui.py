@@ -14,7 +14,8 @@ from PyQt6.QtCore import Qt, QObject, pyqtSignal, QThread
 from customWidgets import DownloadDialog
 
 CONFIG_FILE = "config.json"
-FIGHTS_FOLDER = os.path.expanduser("~\\AppData\\Roaming\\lugia19\\Arena-Maker")
+
+FIGHTS_FOLDER = core.FIGHTS_FOLDER
 class PathWidget(QWidget):
     def __init__(self, label_text, browse_text, link_url=None, is_file=True):
         super().__init__()
