@@ -10,9 +10,6 @@ import xmltodict
 from PIL import Image, ImageOps
 import soundfile as sf
 
-with open("config.json", "r") as f:
-    config = json.load(f)
-
 with open(os.path.join("resources", "constants.json"), "r") as f:
     constants = json.load(f)
 
@@ -280,6 +277,9 @@ def process_image(subfolder_path, filename, target_width, target_height, pad_x=0
 
 
 def compile_folder(progress_signal=None):
+    with open("config.json", "r") as f:
+        config = json.load(f)
+
     if not progress_signal:
         progress_signal = DummySignal()
 

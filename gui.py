@@ -14,7 +14,7 @@ from PyQt6.QtCore import Qt, QObject, pyqtSignal, QThread
 from customWidgets import DownloadDialog
 
 CONFIG_FILE = "config.json"
-
+FIGHTS_FOLDER = os.path.expanduser("~\\AppData\\Roaming\\lugia19\\Arena-Maker")
 class PathWidget(QWidget):
     def __init__(self, label_text, browse_text, link_url=None, is_file=True):
         super().__init__()
@@ -152,8 +152,6 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.layout = QVBoxLayout(self.central_widget)
 
-        self.fights_folder = os.path.expanduser("~\\AppData\\Roaming\\lugia19\\Arena-Maker")
-
         self.folder_list = QListWidget()
 
         self.up_button = QPushButton("↑")
@@ -198,8 +196,8 @@ class MainWindow(QMainWindow):
         self.load_folders()
 
     def open_fights_folder(self):
-        if os.path.exists(self.fights_folder):
-            os.startfile(self.fights_folder)
+        if os.path.exists(FIGHTS_FOLDER):
+            os.startfile(FIGHTS_FOLDER)
         else:
             QMessageBox.warning(self, "Error", "Fights folder not found.")
 
@@ -208,7 +206,7 @@ class MainWindow(QMainWindow):
         self.folder_list.clear()
         updated_folder_order = []
         for folder in folder_order:
-            if os.path.exists(os.path.join(self.fights_folder, folder)):
+            if os.path.exists(os.path.join(FIGHTS_FOLDER, folder)):
                 self.folder_list.addItem(folder)
                 updated_folder_order.append(folder)
             else:
@@ -243,7 +241,7 @@ class MainWindow(QMainWindow):
                     if "data.json" in namelist and any(name.endswith(".design") for name in namelist):
                         # Handle the case where data.json is in the root of the ZIP
                         zip_name = os.path.splitext(os.path.basename(zip_file))[0]
-                        dest_folder = os.path.join(self.fights_folder, zip_name)
+                        dest_folder = os.path.join(FIGHTS_FOLDER, zip_name)
                         os.makedirs(dest_folder, exist_ok=True)
                         for name in namelist:
                             zip_ref.extract(name, dest_folder)
@@ -262,11 +260,11 @@ class MainWindow(QMainWindow):
                                 design_exists = any(name.endswith(".design") for name in zip_ref.namelist() if name.startswith(folder_name))
                                 if not (datajson_obj.is_file() and design_exists):
                                     raise ValueError(f"Invalid folder structure in {zip_file}")
-                            dest_folder = os.path.join(self.fights_folder, folder_name)
+                            dest_folder = os.path.join(FIGHTS_FOLDER, folder_name)
                             os.makedirs(dest_folder, exist_ok=True)
                             for name in zip_ref.namelist():
                                 if name.startswith(folder_name):
-                                    zip_ref.extract(name, self.fights_folder)
+                                    zip_ref.extract(name, FIGHTS_FOLDER)
                             if len(self.folder_list.findItems(folder_name, Qt.MatchFlag.MatchExactly)) == 0:
                                 self.folder_list.addItem(folder_name)
                             self.save_folder_order()
@@ -278,7 +276,7 @@ class MainWindow(QMainWindow):
         current_item = self.folder_list.currentItem()
         if current_item:
             folder_name = current_item.text()
-            folder_path = os.path.join(self.fights_folder, folder_name)
+            folder_path = os.path.join(FIGHTS_FOLDER, folder_name)
             reply = QMessageBox.question(self, "Confirmation", f"Are you sure you want to remove the folder '{folder_name}'?",
                                          QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
             if reply == QMessageBox.StandardButton.Yes:
@@ -307,8 +305,8 @@ class MainWindow(QMainWindow):
         folder_order = []
 
 
-        for folder_name in os.listdir(self.fights_folder):
-            folder_path = os.path.join(self.fights_folder, folder_name)
+        for folder_name in os.listdir(FIGHTS_FOLDER):
+            folder_path = os.path.join(FIGHTS_FOLDER, folder_name)
             if os.path.isdir(folder_path):
                 data_json_path = os.path.join(folder_path, "data.json")
                 design_file_found = False
@@ -335,6 +333,13 @@ class MainWindow(QMainWindow):
     def load_config(self):
         if not os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, "w") as fp: fp.write("{}")
+
+            #Copy over sample fight
+            os.makedirs(FIGHTS_FOLDER, exist_ok=True)
+            zip_path = os.path.join("resources", "example_fights.zip")
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(FIGHTS_FOLDER)
+
             msg_box = QMessageBox()
             msg_box.setWindowTitle("Attention!")
             msg_box.setText("This appears to be your first time running this tool.\n"
