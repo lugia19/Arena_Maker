@@ -108,7 +108,7 @@ class ConfigDialog(QDialog):
 
         self.wwise_studio_widget = PathWidget("WwiseConsole.exe Path:", "Browse", "https://www.audiokinetic.com/en/download/")
         self.mod_folder_widget = PathWidget("Destination Mod Folder:", "Browse", is_file=False)
-        self.game_folder_widget = PathWidget("Game Folder:", "Browse", is_file=False)
+        self.game_folder_widget = PathWidget("AC6 Game Folder:", "Browse", is_file=False)
         self.layout.addWidget(self.wwise_studio_widget)
         self.layout.addWidget(self.mod_folder_widget)
         self.layout.addWidget(self.game_folder_widget)
