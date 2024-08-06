@@ -108,8 +108,11 @@ class ConfigDialog(QDialog):
         self.setLayout(self.layout)
 
         self.wwise_studio_widget = PathWidget("WwiseConsole.exe Path:", "Browse", "https://www.audiokinetic.com/en/download/")
+        self.wwise_studio_widget.line_edit.setToolTip("The location of WwiseConsole.exe")
         self.mod_folder_widget = PathWidget("Destination Mod Folder:", "Browse", is_file=False)
+        self.mod_folder_widget.line_edit.setToolTip("The folder where you want your finalized mod to go.")
         self.game_folder_widget = PathWidget("AC6 Game Folder:", "Browse", is_file=False)
+        self.game_folder_widget.line_edit.setToolTip("Needs to have been unpacked using UXM.")
         self.layout.addWidget(self.wwise_studio_widget)
         self.layout.addWidget(self.mod_folder_widget)
         self.layout.addWidget(self.game_folder_widget)
