@@ -240,24 +240,37 @@ class MainWindow(QMainWindow):
                     root_path = zipfile.Path(zip_ref, "")
                     namelist = zip_ref.namelist()
                     folder_names = set(os.path.dirname(name) for name in namelist)
-                    for folder_name in folder_names:
-                        if not folder_name.count("/") == 0 :
-                            continue
-                        path_obj = root_path.joinpath(folder_name)
-
-                        if path_obj.is_dir():
-                            datajson_obj = root_path.joinpath(folder_name,"data.json")
-                            design_exists = any(name.endswith(".design") for name in zip_ref.namelist() if name.startswith(folder_name))
-                            if not (datajson_obj.is_file() and design_exists):
-                                raise ValueError(f"Invalid folder structure in {zip_file}")
-                        dest_folder = os.path.join(self.fights_folder, folder_name)
+                    if "data.json" in namelist and any(name.endswith(".design") for name in namelist):
+                        # Handle the case where data.json is in the root of the ZIP
+                        zip_name = os.path.splitext(os.path.basename(zip_file))[0]
+                        dest_folder = os.path.join(self.fights_folder, zip_name)
                         os.makedirs(dest_folder, exist_ok=True)
-                        for name in zip_ref.namelist():
-                            if name.startswith(folder_name):
-                                zip_ref.extract(name, self.fights_folder)
-                        if len(self.folder_list.findItems(folder_name, Qt.MatchFlag.MatchExactly)) == 0:
-                            self.folder_list.addItem(folder_name)
+                        for name in namelist:
+                            zip_ref.extract(name, dest_folder)
+                        if len(self.folder_list.findItems(zip_name, Qt.MatchFlag.MatchExactly)) == 0:
+                            self.folder_list.addItem(zip_name)
                         self.save_folder_order()
+                    else:
+                        # Handle the case where data.json is in subfolders
+                        for folder_name in folder_names:
+                            if not folder_name.count("/") == 0:
+                                continue
+                            path_obj = root_path.joinpath(folder_name)
+
+                            if path_obj.is_dir():
+                                datajson_obj = root_path.joinpath(folder_name, "data.json")
+                                design_exists = any(name.endswith(".design") for name in zip_ref.namelist() if name.startswith(folder_name))
+                                if not (datajson_obj.is_file() and design_exists):
+                                    raise ValueError(f"Invalid folder structure in {zip_file}")
+                            dest_folder = os.path.join(self.fights_folder, folder_name)
+                            os.makedirs(dest_folder, exist_ok=True)
+                            for name in zip_ref.namelist():
+                                if name.startswith(folder_name):
+                                    zip_ref.extract(name, self.fights_folder)
+                            if len(self.folder_list.findItems(folder_name, Qt.MatchFlag.MatchExactly)) == 0:
+                                self.folder_list.addItem(folder_name)
+                            self.save_folder_order()
+
             except (zipfile.BadZipFile, ValueError) as e:
                 QMessageBox.warning(self, "Error", str(e))
 
