@@ -359,13 +359,12 @@ def compile_folder(progress_signal=None):
                 raise ValueError(f"You did not include a logicId nor a custom lua file in {subfolder_path}")
 
         decal_thumbnail_path = process_image(subfolder_path, "decal_thumbnail", 128, 128)
-        if os.path.exists(decal_thumbnail_path):
+        if decal_thumbnail_path:
             decal_thumbnail_paths[account_id] = decal_thumbnail_path
+
         rank_icon_path = process_image(subfolder_path, "rank_icon", 232, 128)
-        if os.path.exists(rank_icon_path):
+        if rank_icon_path:
             rank_icon_paths[starting_arena_rank - fight_index] = rank_icon_path
-        else:
-            rank_icon_path = None
 
         # ArenaParam
         new_fight = {
@@ -542,11 +541,11 @@ def process_emblem_archetype_images(subfolder_path, account_id, npc_chara_id):
     image_paths = []
 
     decal_image_path = process_image(subfolder_path, "decal", 1024, 1024)
-    if os.path.exists(decal_image_path):
+    if decal_image_path:
         image_paths.append(decal_image_path)
 
     archetype_image_path = process_image(subfolder_path, "archetype", 2048, 893, pad_y=131)
-    if os.path.exists(archetype_image_path):
+    if archetype_image_path:
         image_paths.append(archetype_image_path)
 
 

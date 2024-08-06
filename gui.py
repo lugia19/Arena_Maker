@@ -247,8 +247,7 @@ class MainWindow(QMainWindow):
                         zip_name = os.path.splitext(os.path.basename(zip_file))[0]
                         dest_folder = os.path.join(FIGHTS_FOLDER, zip_name)
                         os.makedirs(dest_folder, exist_ok=True)
-                        for name in namelist:
-                            zip_ref.extract(name, dest_folder)
+                        zip_ref.extractall(dest_folder)
                         if len(self.folder_list.findItems(zip_name, Qt.MatchFlag.MatchExactly)) == 0:
                             self.folder_list.addItem(zip_name)
                         self.save_folder_order()
@@ -268,7 +267,17 @@ class MainWindow(QMainWindow):
                             os.makedirs(dest_folder, exist_ok=True)
                             for name in zip_ref.namelist():
                                 if name.startswith(folder_name):
-                                    zip_ref.extract(name, FIGHTS_FOLDER)
+                                    if name.endswith('/'):
+                                        # This is a directory, create it
+                                        os.makedirs(os.path.join(FIGHTS_FOLDER, name), exist_ok=True)
+                                    else:
+                                        # This is a file, extract it
+                                        try:
+                                            zip_ref.extract(name, FIGHTS_FOLDER)
+                                        except zipfile.BadZipFile:
+                                            print(f"Skipping bad zip file: {name}")
+                                        except Exception as e:
+                                            print(f"Error extracting {name}: {str(e)}")
                             if len(self.folder_list.findItems(folder_name, Qt.MatchFlag.MatchExactly)) == 0:
                                 self.folder_list.addItem(folder_name)
                             self.save_folder_order()
