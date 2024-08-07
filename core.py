@@ -449,6 +449,9 @@ def compile_folder(progress_signal=None):
 
         # Logic file
         if lua_file:
+            os.makedirs(os.path.join(paths['mod_directory'], "script"), exist_ok=True)
+            if not os.path.exists(os.path.join(paths['mod_directory'], "script", "aicommon.luabnd.dcx")):
+                shutil.copy(os.path.join(resources_dir, "aicommon.luabnd.dcx"), os.path.join(paths['mod_directory'], "script"))
             process_custom_logic_file(lua_file, npc_chara_id)
 
         process_audio_files(subfolder_path, account_id, npc_015_bnk)
