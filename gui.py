@@ -55,12 +55,12 @@ class PathWidget(QWidget):
 class Worker(QObject):
     finished = pyqtSignal()
     progress = pyqtSignal(int, str)
-    error = pyqtSignal(str)
+    error = pyqtSignal(object)
     def run(self):
         try:
             core.compile_folder(self.progress)
         except Exception as e:
-            self.error.emit(f"Compilation failed:\n\n{e}")
+            self.error.emit(e)
 
         self.finished.emit()
 
@@ -92,8 +92,8 @@ class ProgressDialog(QDialog):
 
     def start_task(self):
         self.thread.start()
-    def error_display(self, error):
-        QMessageBox.critical(None, "Error", error)
+    def error_display(self, exception):
+        QMessageBox.critical(None, "Error", f"Compilation failed: {exception}")
     def closeEvent(self, event) -> None:
         event.ignore()
 

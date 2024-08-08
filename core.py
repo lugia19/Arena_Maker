@@ -151,7 +151,7 @@ class ParamFile:
             run_witchy(os.path.join(paths['mod_directory'], "regulation.bin"), recursive=True)
 
         param_file_path = os.path.join(os.path.join(paths['mod_directory'], "regulation-bin"), self.param_name + ".param.xml")
-        xml_data = xmltodict.parse(open(param_file_path).read())
+        xml_data = parse_xml_file(param_file_path)
         self.param_data = xml_data
         self.base_data = self.get_param_entry_with_id(self.baseline_id, self.baseline_id_property)
 
@@ -204,8 +204,7 @@ class FMGFile:
         msgdir = os.path.join(paths['mod_directory'], msg_rel_dir)
         actual_fmg_name = en_jp_fmg_filenames[self.fmg_name]["name"]
         fmg_file_path = os.path.join(msgdir, en_jp_fmg_filenames[self.fmg_name]["file"].replace(".", "-"), actual_fmg_name + ".fmg.xml")
-
-        xml_data = xmltodict.parse(open(fmg_file_path).read())
+        xml_data = parse_xml_file(fmg_file_path)
         self.fmg_text_data = xml_data
 
     def add_text_fmg_entry(self, id_list: Union[int, List[int]], text_value: str):
@@ -242,6 +241,17 @@ class FMGFile:
 class DummySignal:
     def emit(self, arg, arg2):
         return arg
+
+def parse_xml_file(filepath):
+    xml_data = open(filepath, "r").read()
+    xml_dict = None
+    try:
+        xml_dict = xmltodict.parse(xml_data)
+    except Exception as e:
+        e.args = ("Error parsing XML file",filepath) + e.args
+        raise e
+    return xml_dict
+
 
 def process_image(subfolder_path, filename, target_width, target_height, pad_x=0, pad_y=0):
     image_extensions = ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', ".dds"]
@@ -479,7 +489,7 @@ def compile_folder(progress_signal=None):
         progress_signal.emit(80, "Adding decal thumbnails...")
         combined_texture_sheet, combined_layout = create_texture_sheet(decal_thumbnail_paths, "SB_CustomDecalThumbnails", "SB_DecalThumbnails", 128, 128, "Decal_tmb", 8,
                                                                        existing_texture_sheet=Image.open(os.path.join(tpf_dir, "SB_DecalThumbnails.dds")),
-                                                                       existing_layout=xmltodict.parse(open(os.path.join(sblytbnd_dir, "SB_DecalThumbnails.layout")).read()))
+                                                                       existing_layout=parse_xml_file(os.path.join(sblytbnd_dir, "SB_DecalThumbnails.layout")))
 
         combined_texture_sheet.save(os.path.join(tpf_dir, "SB_DecalThumbnails.png"))
 
@@ -689,11 +699,7 @@ def modify_sprite_tag(sprite_tag, images_by_rank, arena_rank_00000d_id):
 def process_gfx_file(gfx_file, layout_file):
     xml_file = os.path.splitext(gfx_file)[0] + '.xml'
     subprocess.run([paths["ffdec_path"], '-swf2xml', gfx_file, xml_file], check=True)
-
-    with open(layout_file, 'r') as file:
-        xml_data1 = file.read()
-
-    layout_data = xmltodict.parse(xml_data1)
+    layout_data = parse_xml_file(layout_file)
 
     rank_image_files = []
     item_list = layout_data["TextureAtlas"]['SubTexture']
@@ -706,11 +712,7 @@ def process_gfx_file(gfx_file, layout_file):
         if id_match:
             id_value = int(id_match.group(1))
             rank_image_files.append({"filename": filename, "rankID": id_value})
-
-    with open(xml_file, 'r') as file:
-        xml_data2 = file.read()
-
-    gfx_data = xmltodict.parse(xml_data2)
+    gfx_data = parse_xml_file(xml_file)
 
     highest_character_id = max([int(item['@characterID']) for item in gfx_data['swf']["tags"]["item"] if '@characterID' in item])
     base_character_id_offset = ((highest_character_id // 100) + 1) * 100
@@ -942,13 +944,8 @@ def add_to_witchy_xml(folder_path:str, new_files:list[str]):
     if xml_file is None:
         raise FileNotFoundError("No XML file starting with '_witchy' found in the specified folder")
 
-    # Read the XML file
-    with open(xml_file, 'r') as file:
-        xml_data = file.read()
-
     # Parse the XML data into a dictionary
-    data_dict = xmltodict.parse(xml_data)
-
+    data_dict = parse_xml_file(xml_file)
     # Check the root element to determine the XML format
     if 'bnd4' in data_dict or "bxf4" in data_dict:
         # Handle bnd4 format
