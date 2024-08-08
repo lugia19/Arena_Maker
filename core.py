@@ -578,7 +578,7 @@ def process_emblem_archetype_images(subfolder_path, account_id, npc_chara_id):
 
         tpf_dict = generate_single_tpf_xml(f"MENU_{image_type}_{image_id}")
         tpf_xml = xmltodict.unparse(tpf_dict, pretty=True)
-        with open(os.path.join(image_dir, "_witchy-tpf.xml"), 'w') as file:
+        with open(os.path.join(image_dir, "_witchy-tpf.xml"), 'w', encoding="utf-8") as file:
             file.write(tpf_xml)
 
         run_witchy(image_dir)
@@ -598,12 +598,12 @@ def process_custom_logic_file(lua_file, npc_chara_id):
     open(lua_file_dest, "w", encoding="utf-8").write(curr_lua_content)
 
     luagnl_dict = generate_luagnl(npc_chara_id)
-    with open(os.path.join(luabnd_dir, f"{npc_chara_id}_logic.luagnl.xml"), 'w') as file:
+    with open(os.path.join(luabnd_dir, f"{npc_chara_id}_logic.luagnl.xml"), 'w', encoding="utf-8") as file:
         file.write(xmltodict.unparse(luagnl_dict, pretty=True))
     run_witchy(os.path.join(luabnd_dir, f"{npc_chara_id}_logic.luagnl.xml"))
 
     bnd_dict = generate_lua_bnd_xml(npc_chara_id)
-    with open(os.path.join(luabnd_dir, "_witchy-bnd4.xml"), 'w') as file:
+    with open(os.path.join(luabnd_dir, "_witchy-bnd4.xml"), 'w', encoding="utf-8") as file:
         file.write(xmltodict.unparse(bnd_dict, pretty=True))
     run_witchy(luabnd_dir)
 
@@ -758,7 +758,7 @@ def process_gfx_file(gfx_file, layout_file):
     modify_sprite_tag(sprite_tag, images_by_rank, arena_rank_00000d_id)
 
     edited_xml_file = os.path.splitext(gfx_file)[0] + '-edited.xml'
-    with open(edited_xml_file, 'w') as file:
+    with open(edited_xml_file, 'w', encoding="utf-8") as file:
         file.write(xmltodict.unparse(gfx_data, pretty=True))
 
     subprocess.run([paths["ffdec_path"], '-xml2swf', edited_xml_file, gfx_file], check=True)
@@ -1002,7 +1002,7 @@ def add_to_witchy_xml(folder_path:str, new_files:list[str]):
     updated_xml = xmltodict.unparse(data_dict, pretty=True)
 
     # Write the updated XML to the file
-    with open(xml_file, 'w') as file:
+    with open(xml_file, 'w', encoding="utf-8") as file:
         file.write(updated_xml)
 
     print(f"Updated {xml_file} with {len(new_files)} new files")
