@@ -304,7 +304,11 @@ class MainWindow(QMainWindow):
         self.config_dialog.exec()
 
     def compile(self):
-        #try:
+        config = json.load(open(CONFIG_FILE, "r"))
+        if not os.path.exists(os.path.join(config["game_folder"], "param")):
+            QMessageBox.critical(self, "ERROR", "The game has not been unpacked using UXM. Please do so.")
+            return
+
         self.progress_dialog = ProgressDialog(self)
         self.progress_dialog.show()
         self.progress_dialog.start_task()
