@@ -130,7 +130,7 @@ class SoundbankEditor:
     def save(self):
         print(f'Final ActorMixer children count: {len(self.actor_mixer["body"]["ActorMixer"]["children"]["items"])}')
         print(f'Final object count: {len(self.sound_object_list)}')
-        json.dump(self.soundbank_data, open(self.soundbank_json_path, "w"), indent=2)
+        json.dump(self.soundbank_data, open(self.soundbank_json_path, "w", encoding="utf-8"), indent=2)
 
         print("Done saving. Rebuilding the bnk from the folder.")
         subprocess.run([paths["bnk2json_path"], self.soundbank_dir])
@@ -184,7 +184,7 @@ class ParamFile:
         xml_path = os.path.join(paths['mod_directory'], "regulation-bin", xml_file)
         xml_data = xmltodict.unparse(self.param_data, pretty=True)
 
-        with open(os.path.join(xml_path), "w") as file:
+        with open(os.path.join(xml_path), "w", encoding="utf-8") as file:
             file.write(xml_data)
         run_witchy(xml_path)
 
@@ -234,7 +234,7 @@ class FMGFile:
 
         xml_data = xmltodict.unparse(self.fmg_text_data, pretty=True)
 
-        with open(os.path.join(fmg_file_path), "w") as file:
+        with open(os.path.join(fmg_file_path), "w", encoding="utf-8") as file:
             file.write(xml_data)
         run_witchy(fmg_file_path)
 
@@ -243,7 +243,12 @@ class DummySignal:
         return arg
 
 def parse_xml_file(filepath):
-    xml_data = open(filepath, "r").read()
+    with open(filepath, 'r', encoding="utf-8") as file:
+        xml_data = file.read()
+    first_tag_index = xml_data.find('<')
+    if first_tag_index != -1:
+        xml_data = xml_data[first_tag_index:]
+
     xml_dict = None
     try:
         xml_dict = xmltodict.parse(xml_data)
@@ -482,7 +487,7 @@ def compile_folder(progress_signal=None):
     run_witchy(tpf_path)
 
     old_witchy_content = open(os.path.join(tpf_dir, "_witchy-tpf.xml")).read().replace("DCX_KRAK_MAX", "DCX_DFLT_11000_44_9_15")
-    open(os.path.join(tpf_dir, "_witchy-tpf.xml"), "w").write(old_witchy_content)
+    open(os.path.join(tpf_dir, "_witchy-tpf.xml"), "w", encoding="utf-8").write(old_witchy_content)
 
     # Decal thumbnail
     if len(decal_thumbnail_paths.values()) > 0:
@@ -495,7 +500,7 @@ def compile_folder(progress_signal=None):
 
         subprocess.run([paths["texconv_path"], "-f", "BC7_UNORM", os.path.join(tpf_dir, "SB_DecalThumbnails.png"), "-o", tpf_dir, "-y"], check=True)
 
-        with open(os.path.join(sblytbnd_dir, "SB_DecalThumbnails.layout"), "w") as fp:
+        with open(os.path.join(sblytbnd_dir, "SB_DecalThumbnails.layout"), "w", encoding="utf-8") as fp:
             fp.write(xmltodict.unparse(combined_layout, pretty=True))
         for path in decal_thumbnail_paths.values():
             os.remove(path)
@@ -508,7 +513,7 @@ def compile_folder(progress_signal=None):
         subprocess.run([paths["texconv_path"], "-f", "BC7_UNORM", os.path.join(tpf_dir, "SB_CustomArenaRank.png"), "-o", tpf_dir, "-y"], check=True)
 
         layout_path = os.path.join(sblytbnd_dir, "SB_CustomArenaRank.layout")
-        with open(layout_path, "w") as fp:
+        with open(layout_path, "w", encoding="utf-8") as fp:
             fp.write(xmltodict.unparse(rank_layout, pretty=True))
 
         add_to_witchy_xml(sblytbnd_dir, ["SB_CustomArenaRank.layout"])
@@ -590,7 +595,7 @@ def process_custom_logic_file(lua_file, npc_chara_id):
 
     curr_lua_content = open(lua_file_dest, "r").read()
     curr_lua_content = curr_lua_content.replace(current_id, str(npc_chara_id))
-    open(lua_file_dest, "w").write(curr_lua_content)
+    open(lua_file_dest, "w", encoding="utf-8").write(curr_lua_content)
 
     luagnl_dict = generate_luagnl(npc_chara_id)
     with open(os.path.join(luabnd_dir, f"{npc_chara_id}_logic.luagnl.xml"), 'w') as file:
