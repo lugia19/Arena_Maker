@@ -7,8 +7,14 @@ It supports:
 - Custom BGM (soon tm, waiting for a rewwise update)
 - Custom AI
 
-It will automatically download WitchyBND, rewwise, ffdec, texconv.
-It also relies on Wwise Studio 2019+ being installed.
+## Requirements
+
+- Wwise Studio 2019+ being installed.
+- The game having been unpacked with UXM.
+
+
+It will automatically download other dependencies such as WitchyBND, rewwise, ffdec, texconv.
+
 
 ## Functionality
 
