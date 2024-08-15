@@ -57,10 +57,10 @@ class Worker(QObject):
     progress = pyqtSignal(int, str)
     error = pyqtSignal(object)
     def run(self):
-        try:
-            core.compile_folder(self.progress)
-        except Exception as e:
-            self.error.emit(e)
+        #try:
+        core.compile_folder(self.progress)
+        #except Exception as e:
+            #self.error.emit(e)
 
         self.finished.emit()
 

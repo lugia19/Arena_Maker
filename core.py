@@ -6,6 +6,8 @@ import shutil
 import subprocess
 import json
 from typing import Union, List
+
+import numpy
 import xmltodict
 from PIL import ImageDraw, ImageFont, ImageColor, Image, ImageOps, ImageFilter
 
@@ -369,6 +371,7 @@ def compile_folder(progress_signal=None):
     paths["fnv_hash_path"] = os.path.join(paths["rewwise_path"], "fnv-hash.exe")
     paths["bnk2json_path"] = os.path.join(paths["rewwise_path"], "bnk2json.exe")
     paths["game_directory"] = config["game_folder"]
+    paths["wem_converter"] = os.path.join(resources_dir, "wem_converter.exe")
     paths['mod_directory'] = config["mod_folder"]
 
     try:
@@ -469,7 +472,7 @@ def compile_folder(progress_signal=None):
             rank_icon_path = os.path.join(subfolder_path, f"{fight_index}_rank_icon.png")
             rank_icon_img.save(rank_icon_path)
             rank_icon_path = process_image(subfolder_path, rank_icon_path, 232, 128)
-            #os.remove(os.path.join(subfolder_path, f"{fight_index}_rank_icon.png")) #Clean up
+            os.remove(os.path.join(subfolder_path, f"{fight_index}_rank_icon.png")) #Clean up
 
         rank_icon_paths[starting_arena_rank - fight_index] = rank_icon_path
 
@@ -700,6 +703,50 @@ def process_custom_logic_file(lua_file, npc_chara_id):
         file.write(xmltodict.unparse(bnd_dict, pretty=True))
     run_witchy(luabnd_dir)
 
+def convert_to_wem(input_file):
+    # Get the directory and filename without extension
+    input_dir, input_filename = os.path.split(input_file)
+    filename_without_ext = os.path.splitext(input_filename)[0]
+
+    # Create a temporary WAV file name
+    temp_wav = os.path.join(input_dir, f"{filename_without_ext}_temp.wav")
+
+    try:
+        # Read the audio file
+        data, samplerate = sf.read(input_file)
+
+        # Convert to stereo if mono
+        if len(data.shape) == 1 or data.shape[1] == 1:
+            print(f"Converting {input_file} from mono to stereo")
+            stereo_data = numpy.column_stack((data, data))
+        else:
+            print(f"{input_file} is already in stereo")
+            stereo_data = data
+
+        # Write the stereo data to the temporary WAV file
+        sf.write(temp_wav, stereo_data, samplerate)
+
+        # Run the WEM converter executable
+        subprocess.run([paths["wem_converter"], temp_wav], check=True)
+
+        # The output will be temp.wem in the same directory as the executable
+        temp_wem = os.path.join(os.getcwd(), "test.wem")
+
+        # Create the final WEM filename
+        final_wem = os.path.join(input_dir, f"{filename_without_ext}.wem")
+
+        # Move and rename the temp.wem file
+        shutil.move(temp_wem, final_wem)
+
+        print(f"Created WEM file: {final_wem}")
+        return final_wem
+
+    finally:
+        # Clean up the temporary WAV file if it was created
+        if os.path.exists(temp_wav):
+            os.remove(temp_wav)
+            print(f"Cleaned up temporary file: {temp_wav}")
+
 def process_audio_files(subfolder_path, account_id, soundbnk, file_data):
     intro_audio_paths = file_data.get("introAudioPaths")
     if intro_audio_paths:
@@ -713,23 +760,25 @@ def process_audio_files(subfolder_path, account_id, soundbnk, file_data):
         if not audio_file_list:
             continue
         for filepath in audio_file_list:
+
             filename = os.path.basename(filepath)
             if filename.lower().endswith((".wav", ".mp3", ".ogg", ".flac")):
-                audio_subfolder_path = os.path.dirname(filepath)
+                if False:
+                    audio_subfolder_path = os.path.dirname(filepath)
+                    wav_filename = os.path.splitext(filename)[0] + ".wav"
+                    wav_filepath = os.path.join(audio_subfolder_path, wav_filename)
 
-                wav_filename = os.path.splitext(filename)[0] + ".wav"
-                wav_filepath = os.path.join(audio_subfolder_path, wav_filename)
+                    if filename.lower().endswith(".wav"):
+                        audio_filepath = os.path.join(audio_subfolder_path, filename)
+                    else:
+                        audio_data, sample_rate = sf.read(os.path.join(audio_subfolder_path, filename))
+                        sf.write(wav_filepath, audio_data, sample_rate, format='WAV')
+                        audio_filepath = wav_filepath
 
-                if filename.lower().endswith(".wav"):
-                    audio_filepath = os.path.join(audio_subfolder_path, filename)
-                else:
-                    audio_data, sample_rate = sf.read(os.path.join(audio_subfolder_path, filename))
-                    sf.write(wav_filepath, audio_data, sample_rate, format='WAV')
-                    audio_filepath = wav_filepath
+                    command = ["python", paths["conversion_script_path"], audio_filepath]
+                    subprocess.run(command, check=True)
 
-                command = ["python", paths["conversion_script_path"], audio_filepath]
-                subprocess.run(command, check=True)
-
+                wem_file = convert_to_wem(filepath)
                 offset = audio_file_list.index(filepath)
                 talk_id = 600000000 + int(account_id) * 1000 + 100 + offset if audio_file_list == intro_audio_paths else 700000000 + int(account_id) * 1000 + offset
 
@@ -739,9 +788,9 @@ def process_audio_files(subfolder_path, account_id, soundbnk, file_data):
 
                 if os.path.exists(new_wem_filepath):
                     print(f"Warning - overwriting existing file {new_wem_filename}.")
-                shutil.move(audio_filepath.replace(".wav", ".wem"), new_wem_filepath)
+                shutil.move(wem_file, new_wem_filepath)
 
-                if wav_filename.lower() != filename.lower():
+                if False and wav_filename.lower() != filename.lower():
                     os.remove(wav_filepath)
 
                 soundbnk.add_event(talk_id, is_play=True, sound_filename=new_wem_filename)
