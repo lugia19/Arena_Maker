@@ -318,12 +318,6 @@ class MainWindow(QMainWindow):
             with open(CONFIG_FILE, 'r') as file:
                 config = json.load(file)
                 folder_order = config.get("folder_order", None)
-                if folder_order:
-                    return folder_order
-
-        # Construct the folder order based on the subfolders in the fights folder
-        folder_order = []
-
 
         for folder_name in os.listdir(FIGHTS_FOLDER):
             folder_path = os.path.join(FIGHTS_FOLDER, folder_name)
@@ -334,7 +328,7 @@ class MainWindow(QMainWindow):
                     if file_name.endswith(".design"):
                         design_file_found = True
                         break
-                if os.path.isfile(data_json_path) and design_file_found:
+                if os.path.isfile(data_json_path) and design_file_found and folder_name not in folder_order:
                     folder_order.append(folder_name)
 
         self.save_folder_order(folder_order)
