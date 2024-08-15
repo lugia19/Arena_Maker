@@ -34,7 +34,7 @@ def convert_wav_to_wem(wav_file, root_audio_dir, wwise_console_path):
 
 
     # Call WwiseConsole to convert the WAV to WEM
-    project_file = os.path.join(root_audio_dir, "../conversion-project", "conversion-project.wproj")
+    project_file = os.path.join(os.path.dirname(root_audio_dir), "conversion-project", "conversion-project.wproj")
     command = [
         wwise_console_path,
         "convert-external-source",
@@ -47,7 +47,7 @@ def convert_wav_to_wem(wav_file, root_audio_dir, wwise_console_path):
         input_folder
     ]
 
-    max_retries = 5
+    max_retries = 25
     retry_count = 0
 
     while retry_count < max_retries:
