@@ -7,7 +7,8 @@ import subprocess
 import json
 from typing import Union, List
 import xmltodict
-from PIL import Image, ImageOps
+from PIL import ImageDraw, ImageFont, ImageColor, Image, ImageOps, ImageFilter
+
 import soundfile as sf
 
 with open(os.path.join("resources", "constants.json"), "r") as f:
@@ -44,6 +45,18 @@ en_jp_fmg_filenames = {
             "name":"FNR_メニューテキスト"
         }
     }
+
+
+# Define the rank data
+rank_tiers = [
+    {"letter": "S", "percentage": 10, "color": "#fff145"},
+    {"letter": "A", "percentage": 15, "color": "#83eeee"},
+    {"letter": "B", "percentage": 20, "color": "#7744b2"},
+    {"letter": "C", "percentage": 25, "color": "#0bc367"},
+    {"letter": "D", "percentage": 10, "color": "#853322"},
+    {"letter": "E", "percentage": 10, "color": "#e3ffff"},
+    {"letter": "F", "percentage": 10, "color": "#e3ffff"},
+]
 
 class SoundbankEditor:
     def __init__(self, rel_soundbank_path):
@@ -257,23 +270,70 @@ def parse_xml_file(filepath):
         raise e
     return xml_dict
 
+def generate_rank_image(text, text_color, font_path):
+    image_size = (232, 128)
+    text_size = (155, 55)  # for 2 digits
+    if len(text.split("/")[0]) > 2:
+        text_size = (180, 55)  # For 3 digits
+    glow_size = 20
+    font_size = 70
+    glow_iterations = 3
+    text_color = ImageColor.getcolor(text_color, mode="RGB")
 
-def process_image(subfolder_path, filename, target_width, target_height, pad_x=0, pad_y=0):
-    image_extensions = ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', ".dds"]
+    # Create a transparent image
+    image = Image.new('RGBA', image_size, (0, 0, 0, 0))
 
+    # Load the font with fixed size
+    font = ImageFont.truetype(font_path, font_size)
+
+    # Create a temporary image for the text
+    temp_img = Image.new('RGBA', (1000, 1000), (0, 0, 0, 0))  # Large temporary image
+    temp_draw = ImageDraw.Draw(temp_img)
+
+    # Draw text on temporary image
+    temp_draw.text((0, 0), text, font=font, fill=text_color)
+
+    # Crop the temporary image to the text bounds
+    text_bbox = temp_img.getbbox()
+    temp_img = temp_img.crop(text_bbox)
+
+    # Resize (stretch) the text image to fit the specified text_size
+    stretched_text = temp_img.resize(text_size, Image.LANCZOS)
+
+    # Calculate text position in the main image (centered)
+    text_position = ((image_size[0] - text_size[0]) // 2, (image_size[1] - text_size[1]) // 2)
+
+    # Create the text layer
+    text_layer = Image.new('RGBA', image_size, (0, 0, 0, 0))
+    text_layer.paste(stretched_text, text_position)
+
+    # Create glow effect
+    glow_layer = text_layer.copy()
+    for i in range(glow_iterations):
+        glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(glow_size / glow_iterations))
+
+        glow_layer_colored = Image.new('RGBA', image_size, text_color + (0,))
+        glow_layer = Image.composite(glow_layer_colored, glow_layer, glow_layer)
+
+        image = Image.alpha_composite(image, glow_layer)
+
+    # Add the original text on top
+    image = Image.alpha_composite(image, text_layer)
+
+    return image
+
+def process_image(subfolder_path, img_path, target_width, target_height, pad_x=0, pad_y=0):
+    if not img_path:
+        return None
+    if subfolder_path not in img_path:
+        img_path = os.path.join(subfolder_path, img_path)
     #Ensure multiple of 4
     if pad_x == 0:
         target_width = target_width + (4 - target_width % 4) % 4
     if pad_y == 0:
         target_height = target_height + (4 - target_height % 4) % 4
 
-    for ext in image_extensions:
-        img_path = os.path.join(subfolder_path, f"{filename}{ext}")
-        if os.path.exists(img_path):
-            break
-    else:
-        return None  # Image not found
-
+    filename = os.path.splitext(os.path.basename(img_path))[0]
     resized_img_path = os.path.join(subfolder_path, f"{filename}-resized.png")
     with Image.open(img_path) as img:
         # Resize the image
@@ -341,7 +401,18 @@ def compile_folder(progress_signal=None):
     # Main loop
     fight_order = config["folder_order"]
     fight_dirs = [os.path.join(paths["fights_directory"], fight_dir) for fight_dir in fight_order]
-    progress_signal.emit(0, "Adding parameters for fight #1")
+    total_fights = len(fight_dirs)
+
+    # Calculate the number of fights for each rank
+    fights_per_rank = [math.ceil(tier["percentage"] * total_fights / 100) for tier in rank_tiers]
+
+    # Ensure we have at least one fight per used rank
+    while sum(fights_per_rank) > total_fights:
+        fights_per_rank[-1] -= 1
+        if fights_per_rank[-1] == 0:
+            fights_per_rank.pop()
+
+    progress_signal.emit(0, f"Adding parameters for fight 1/{total_fights}")
     for fight_index, subfolder_path in enumerate(fight_dirs):
         npc_chara_id = starting_npc_chara_id + fight_index
         arena_id = starting_arena_id + fight_index
@@ -352,39 +423,60 @@ def compile_folder(progress_signal=None):
         with open(data_file, "r") as file:
             fight_data = json.load(file)
 
+        file_data = fight_data["fileData"]
         # Get the path to the .design file
-        design_files = [file for file in os.listdir(subfolder_path) if file.endswith(".design")]
-        if len(design_files) == 1:
-            design_file = os.path.join(subfolder_path, design_files[0])
-        elif len(design_files) > 1:
-            raise ValueError(f"Multiple .design files found in {subfolder_path}")
-        else:
-            raise FileNotFoundError(f"No .design file found in {subfolder_path}")
+        design_file = os.path.join(subfolder_path, file_data["acDesign"])
 
-        # Get the path to the .lua file (if needed)
+        # Get the path to the .lua file (if present)
         lua_file = None
-        if "logicId" not in fight_data:
-            lua_files = [file for file in os.listdir(subfolder_path) if file.endswith(".lua")]
+        if "logicFile" in file_data:
+            lua_file = os.path.join(subfolder_path, file_data["logicFile"])
 
-            if len(lua_files) == 1:
-                lua_file = os.path.join(subfolder_path, lua_files[0])
-            elif len(lua_files) > 1:
-                raise ValueError(f"Multiple .lua files found in {subfolder_path}")
-            else:
-                raise ValueError(f"You did not include a logicId nor a custom lua file in {subfolder_path}")
+        if "decalThumbnail" in file_data:
+            decal_thumbnail_path = process_image(subfolder_path, file_data["decalThumbnail"], 128, 128)
+            if decal_thumbnail_path:
+                decal_thumbnail_paths[account_id] = decal_thumbnail_path
 
-        decal_thumbnail_path = process_image(subfolder_path, "decal_thumbnail", 128, 128)
-        if decal_thumbnail_path:
-            decal_thumbnail_paths[account_id] = decal_thumbnail_path
+        rank_data = None
+        rank_icon_path = None
+        # In your loop, replace the rank_data section with this:
+        if "rankIcon" in file_data:
+            rank_icon_path = process_image(subfolder_path, os.path.join(subfolder_path, file_data["rankIcon"]), 232, 128)
+        elif "customRankData" in fight_data:
+            rank_data = fight_data["customRankData"]
+        else:
+            # Calculate the rank number (1 is the highest rank)
+            rank_number = total_fights - fight_index
+            rank_letter = ""
+            rank_color = "#ffffff"
+            # Determine which rank tier this fight belongs to
+            cumulative_fights = 0
+            for i, fights in enumerate(fights_per_rank):
+                cumulative_fights += fights
+                if rank_number <= cumulative_fights:
+                    rank_letter = rank_tiers[i]["letter"]
+                    rank_color = rank_tiers[i]["color"]
+                    break
+            if rank_number < 10:
+                rank_number = f"0{rank_number}"
+            rank_data = {
+                "text": f"{rank_number}/{rank_letter}",
+                "color": rank_color
+            }
 
-        rank_icon_path = process_image(subfolder_path, "rank_icon", 232, 128)
-        if rank_icon_path:
-            rank_icon_paths[starting_arena_rank - fight_index] = rank_icon_path
+        if rank_data:
+            rank_icon_img = generate_rank_image(rank_data["text"], rank_data["color"], os.path.join(resources_dir, "Jura-SemiBold.ttf"))
+            rank_icon_path = os.path.join(subfolder_path, f"{fight_index}_rank_icon.png")
+            rank_icon_img.save(rank_icon_path)
+            rank_icon_path = process_image(subfolder_path, rank_icon_path, 232, 128)
+            #os.remove(os.path.join(subfolder_path, f"{fight_index}_rank_icon.png")) #Clean up
+
+        rank_icon_paths[starting_arena_rank - fight_index] = rank_icon_path
 
         # ArenaParam
         new_fight = {
             "@id": arena_id,
-            "@rankTextureId": starting_arena_rank - fight_index if rank_icon_path else 50,
+            "@rankTextureId": starting_arena_rank - fight_index,
             "@paramdexName": f"{param_name_prefix} Combatant #{fight_index + 1}",
             "@accountParamId": account_id,
             "@charaInitParamId": npc_chara_id,
@@ -408,7 +500,7 @@ def compile_folder(progress_signal=None):
         title_characters_fmg.add_text_fmg_entry([account_id + 1, account_id + 3], fight_data["textData"]["pilotName"])
 
         # Intro and Outro text
-        if "introLines" in fight_data["textData"]:
+        if "intro" in fight_data["textData"]:
             for i in range(3):
                 new_talk = {
                     "@id": 600000000 + account_id * 1000 + 100 + i,
@@ -418,9 +510,9 @@ def compile_folder(progress_signal=None):
                     "@characterNameTextId": fight_data["textData"]["characterNameTextId"]
                 }
                 talk_param.add_param_entry(new_talk)
-                talk_msg_fmg.add_text_fmg_entry(new_talk["@id"], fight_data["textData"]["introLines"][i])
+                talk_msg_fmg.add_text_fmg_entry(new_talk["@id"], fight_data["textData"]["intro"][i])
 
-        if "outroLines" in fight_data["textData"]:
+        if "outro" in fight_data["textData"]:
             for i in range(2):
                 new_talk = {
                     "@id": 700000000 + account_id * 1000 + i,
@@ -430,7 +522,7 @@ def compile_folder(progress_signal=None):
                     "@characterNameTextId": fight_data["textData"]["characterNameTextId"]
                 }
                 talk_param.add_param_entry(new_talk)
-                talk_msg_fmg.add_text_fmg_entry(new_talk["@id"], fight_data["textData"]["outroLines"][i])
+                talk_msg_fmg.add_text_fmg_entry(new_talk["@id"], fight_data["textData"]["outro"][i])
 
         # CharaInitParam
         new_charainit = {
@@ -460,7 +552,7 @@ def compile_folder(progress_signal=None):
         add_design_file(design_file, npc_chara_id)
 
         # Emblem/archetype
-        process_emblem_archetype_images(subfolder_path, account_id, npc_chara_id)
+        process_emblem_archetype_images(subfolder_path, account_id, npc_chara_id, file_data)
 
         # Logic file
         if lua_file:
@@ -469,8 +561,8 @@ def compile_folder(progress_signal=None):
                 shutil.copy(os.path.join(resources_dir, "aicommon.luabnd.dcx"), os.path.join(paths['mod_directory'], "script"))
             process_custom_logic_file(lua_file, npc_chara_id)
 
-        process_audio_files(subfolder_path, account_id, npc_015_bnk)
-        progress_signal.emit(math.floor(75 / len(fight_dirs) * (fight_index+1)), f"Adding parameters for fight #{fight_index+2}")
+        process_audio_files(subfolder_path, account_id, npc_015_bnk, file_data)
+        progress_signal.emit(math.floor(75 / len(fight_dirs) * (fight_index+1)), f"Adding parameters for fight {fight_index+2}/{total_fights}")
 
     progress_signal.emit(75, "Unpacking textures...")
     # Prep work for thumbnails and rank icons
@@ -550,7 +642,7 @@ def compile_folder(progress_signal=None):
     run_witchy(sblytbnd_dir)
     progress_signal.emit(100, "Done!")
 
-def process_emblem_archetype_images(subfolder_path, account_id, npc_chara_id):
+def process_emblem_archetype_images(subfolder_path, account_id, npc_chara_id, file_data):
     copy_file_from_game_folder_if_missing(os.path.join("menu", "hi", "00_solo.tpfbhd"))
     if copy_file_from_game_folder_if_missing(os.path.join("menu", "hi", "00_solo.tpfbdt")):
         run_witchy(os.path.join(paths['mod_directory'], "menu", "hi", "00_solo.tpfbdt"))
@@ -558,22 +650,23 @@ def process_emblem_archetype_images(subfolder_path, account_id, npc_chara_id):
 
     image_paths = []
 
-    decal_image_path = process_image(subfolder_path, "decal", 1024, 1024)
+    decal_image_path = process_image(subfolder_path, file_data.get("decalImage"), 1024, 1024)
     if decal_image_path:
         image_paths.append(decal_image_path)
 
-    archetype_image_path = process_image(subfolder_path, "archetype", 2048, 893, pad_y=131)
+    archetype_image_path = process_image(subfolder_path, file_data.get("archetypeImage"), 2048, 893, pad_y=131)
     if archetype_image_path:
         image_paths.append(archetype_image_path)
 
 
     for image_path in image_paths:
-        image_id = str(account_id) if "decal.dds" in image_path else str(npc_chara_id)
+        image_type = "Decal" if image_path == file_data.get("decalImage") else "Archetype"
+        image_id = str(account_id) if image_type == "Decal" else str(npc_chara_id)
         image_id = image_id.zfill(8)
 
-        image_type = "Decal" if "decal" in image_path else "Archetype"
+
         image_dir = os.path.join(solo_dir, f"MENU_{image_type}_{image_id}-tpf-dcx")
-        os.makedirs(image_dir)
+        os.makedirs(image_dir, exist_ok=True)
         shutil.copy(image_path, os.path.join(image_dir, f"MENU_{image_type}_{image_id}.dds"))
 
         tpf_dict = generate_single_tpf_xml(f"MENU_{image_type}_{image_id}")
@@ -607,23 +700,22 @@ def process_custom_logic_file(lua_file, npc_chara_id):
         file.write(xmltodict.unparse(bnd_dict, pretty=True))
     run_witchy(luabnd_dir)
 
-def process_audio_files(subfolder_path, account_id, soundbnk):
-    audio_subfolders = []
-    intro_audio_path = os.path.join(subfolder_path, "intro")
-    if os.path.exists(intro_audio_path):
-        audio_subfolders.append(intro_audio_path)
+def process_audio_files(subfolder_path, account_id, soundbnk, file_data):
+    intro_audio_paths = file_data.get("introAudioPaths")
+    if intro_audio_paths:
+        intro_audio_paths = [os.path.join(subfolder_path, x) for x in intro_audio_paths]
 
-    outro_audio_path = os.path.join(subfolder_path, "outro")
-    if os.path.exists(outro_audio_path):
-        audio_subfolders.append(outro_audio_path)
+    outro_audio_paths = file_data.get("outroAudioPaths")
+    if outro_audio_paths:
+        outro_audio_paths = [os.path.join(subfolder_path, x) for x in outro_audio_paths]
 
-    for audio_subfolder_path in audio_subfolders:
-        for filename in os.listdir(audio_subfolder_path):
+    for audio_file_list in [intro_audio_paths, outro_audio_paths]:
+        if not audio_file_list:
+            continue
+        for filepath in audio_file_list:
+            filename = os.path.basename(filepath)
             if filename.lower().endswith((".wav", ".mp3", ".ogg", ".flac")):
-                match = re.match(r'^(\d+)\.\w+$', filename)
-                if not match or int(match.group(1)) > 3:
-                    print(f"Skipping file '{filename}' as it doesn't follow the naming pattern or the number is greater than 3.")
-                    continue
+                audio_subfolder_path = os.path.dirname(filepath)
 
                 wav_filename = os.path.splitext(filename)[0] + ".wav"
                 wav_filepath = os.path.join(audio_subfolder_path, wav_filename)
@@ -638,8 +730,8 @@ def process_audio_files(subfolder_path, account_id, soundbnk):
                 command = ["python", paths["conversion_script_path"], audio_filepath]
                 subprocess.run(command, check=True)
 
-                offset = int(os.path.splitext(filename)[0])
-                talk_id = 600000000 + int(account_id) * 1000 + 100 + offset if os.path.basename(os.path.dirname(audio_filepath)).lower() == "intro" else 700000000 + int(account_id) * 1000 + offset
+                offset = audio_file_list.index(filepath)
+                talk_id = 600000000 + int(account_id) * 1000 + 100 + offset if audio_file_list == intro_audio_paths else 700000000 + int(account_id) * 1000 + offset
 
                 new_wem_filename = str(get_hash(f"Source_v{talk_id}")) + ".wem"
                 new_wem_filepath = os.path.join(soundbnk.soundbank_dir, new_wem_filename)
