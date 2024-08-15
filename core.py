@@ -13,20 +13,18 @@ from PIL import ImageDraw, ImageFont, ImageColor, Image, ImageOps, ImageFilter
 
 import soundfile as sf
 
-with open(os.path.join("resources", "constants.json"), "r") as f:
-    constants = json.load(f)
 FIGHTS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fights")
 os.makedirs(FIGHTS_FOLDER, exist_ok=True)
 paths = {}
 
-baseline_ac = constants["baseline_ac"]
-base_talk_accountid = constants["base_talk_accountid"]
-menu_category = constants["menu_category"]
-param_name_prefix = constants["param_name_prefix"]
-starting_arena_id = constants["starting_arena_id"]
-starting_arena_rank = constants["starting_arena_rank"]
-starting_account_id = constants["starting_account_id"]
-starting_npc_chara_id = constants["starting_npc_chara_id"]
+baseline_ac = 11200000
+base_talk_accountid = 310
+menu_category = 20
+param_name_prefix = "CustomArena"
+starting_arena_id = 300
+starting_arena_rank = 300
+starting_account_id = 16000
+starting_npc_chara_id = 999009800
 
 
 en_jp_fmg_filenames = {
@@ -226,13 +224,13 @@ class FMGFile:
         if isinstance(id_list, int):
             id_list = [id_list]
 
-        fmg_entries = self.fmg_text_data["fmg"]["entries"]["text"]
-
+        fmg_entries:List = self.fmg_text_data["fmg"]["entries"]["text"]
+        items_to_pop = []
         for item in fmg_entries:
-            if item["@id"] in id_list:
-                item["#text"] = text_value
-                id_list.pop(item["@id"])
-
+            if int(item["@id"]) in id_list:
+                items_to_pop.append(item)
+        for item in items_to_pop:
+            fmg_entries.pop(item)
         for item_id in id_list:
             fmg_entries.append({"@id": item_id, "#text": text_value})
 
