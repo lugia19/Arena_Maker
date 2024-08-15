@@ -110,13 +110,13 @@ class ConfigDialog(QDialog):
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
 
-        self.wwise_studio_widget = PathWidget("WwiseConsole.exe Path:", "Browse", "https://www.audiokinetic.com/en/download/")
-        self.wwise_studio_widget.line_edit.setToolTip("The location of WwiseConsole.exe")
+        #self.wwise_studio_widget = PathWidget("WwiseConsole.exe Path:", "Browse", "https://www.audiokinetic.com/en/download/")
+        #self.wwise_studio_widget.line_edit.setToolTip("The location of WwiseConsole.exe")
         self.mod_folder_widget = PathWidget("Destination Mod Folder:", "Browse", is_file=False)
         self.mod_folder_widget.line_edit.setToolTip("The folder where you want your finalized mod to go.")
         self.game_folder_widget = PathWidget("AC6 Game Folder:", "Browse", is_file=False)
         self.game_folder_widget.line_edit.setToolTip("Needs to have been unpacked using UXM.")
-        self.layout.addWidget(self.wwise_studio_widget)
+        #self.layout.addWidget(self.wwise_studio_widget)
         self.layout.addWidget(self.mod_folder_widget)
         self.layout.addWidget(self.game_folder_widget)
 
@@ -129,11 +129,12 @@ class ConfigDialog(QDialog):
         self.layout.addLayout(button_layout)
 
     def save_config(self):
-        if not self.wwise_studio_widget.line_edit.text() or not self.mod_folder_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
+        #if not self.wwise_studio_widget.line_edit.text() or not self.mod_folder_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
+        if not self.mod_folder_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
             QMessageBox.warning(self, "Warning", "Please fill in all the required paths.")
         else:
             with open(CONFIG_FILE, "r") as fp: config = json.load(fp)
-            config["wwise_studio_path"] = self.wwise_studio_widget.line_edit.text().replace("/","\\")
+            #config["wwise_studio_path"] = self.wwise_studio_widget.line_edit.text().replace("/","\\")
             config["mod_folder"] = self.mod_folder_widget.line_edit.text().replace("/","\\")
             game_folder = self.game_folder_widget.line_edit.text()
             if not game_folder.endswith("Game"):
@@ -145,7 +146,8 @@ class ConfigDialog(QDialog):
             self.accept()
 
     def closeEvent(self, event):
-        if not self.wwise_studio_widget.line_edit.text() or not self.mod_folder_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
+        #if not self.wwise_studio_widget.line_edit.text() or not self.mod_folder_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
+        if not self.mod_folder_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
             QMessageBox.warning(self, "Warning", "Please fill in all the required paths.")
             event.ignore()
         else:
@@ -369,7 +371,7 @@ class MainWindow(QMainWindow):
 
         with open(CONFIG_FILE, 'r') as file:
             config = json.load(file)
-            if not config.get("wwise_studio_path"):
+            if False and not config.get("wwise_studio_path"):
                 audiokinetic_path = r"C:\Program Files (x86)\Audiokinetic"
                 if os.path.exists(audiokinetic_path):
                     wwise_folders = [folder for folder in os.listdir(audiokinetic_path) if "Wwise" in folder]
@@ -390,13 +392,13 @@ class MainWindow(QMainWindow):
                         wwise_console_path = os.path.join(audiokinetic_path, wwise_folder, "Authoring", "x64", "Release", "bin", "WwiseConsole.exe")
                         config["wwise_studio_path"] = wwise_console_path
 
-            self.config_dialog.wwise_studio_widget.line_edit.setText(config.get("wwise_studio_path", ""))
+            #self.config_dialog.wwise_studio_widget.line_edit.setText(config.get("wwise_studio_path", ""))
             self.config_dialog.mod_folder_widget.line_edit.setText(config.get("mod_folder", ""))
             self.config_dialog.game_folder_widget.line_edit.setText(config.get("game_folder", ""))
 
     def save_config(self):
         with open(CONFIG_FILE, "r") as file: config = json.load(file)
-        config["wwise_studio_path"] = self.config_dialog.wwise_studio_widget.line_edit.text()
+        #config["wwise_studio_path"] = self.config_dialog.wwise_studio_widget.line_edit.text()
         config["mod_folder"] = self.config_dialog.mod_folder_widget.line_edit.text()
         config["game_folder"] = self.config_dialog.game_folder_widget.line_edit.text()
 
@@ -493,7 +495,8 @@ if __name__ == "__main__":
 
     check_tools()
     # Check if the required paths are specified
-    if not main_window.config_dialog.wwise_studio_widget.line_edit.text() or not main_window.config_dialog.mod_folder_widget.line_edit.text() or not main_window.config_dialog.game_folder_widget.line_edit.text():
+    #if not main_window.config_dialog.wwise_studio_widget.line_edit.text() or not main_window.config_dialog.mod_folder_widget.line_edit.text() or not main_window.config_dialog.game_folder_widget.line_edit.text():
+    if not main_window.config_dialog.mod_folder_widget.line_edit.text() or not main_window.config_dialog.game_folder_widget.line_edit.text():
         main_window.open_config()
 
 
