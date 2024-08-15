@@ -312,8 +312,9 @@ class MainWindow(QMainWindow):
             return
 
         self.progress_dialog = ProgressDialog(self)
-        self.progress_dialog.show()
         self.progress_dialog.start_task()
+        self.progress_dialog.exec()
+
 
     def load_folder_order(self):
         if os.path.exists(CONFIG_FILE):
