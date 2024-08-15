@@ -476,6 +476,11 @@ def compile_folder(progress_signal=None):
 
         rank_icon_paths[starting_arena_rank - fight_index] = rank_icon_path
 
+        default_arena_values = {
+            "introCutsceneId": "230000",
+            "outroCutsceneId": -1,
+        }
+
         # ArenaParam
         new_fight = {
             "@id": arena_id,
@@ -488,6 +493,10 @@ def compile_folder(progress_signal=None):
             "@menuCategory": menu_category,
             **{f"@{key}": value for key, value in fight_data["arenaData"].items()}
         }
+        for key, value in default_arena_values.items():
+            if key not in fight_data["arenaData"]:
+                new_fight[key] = value
+
         arena_param.add_param_entry(new_fight)
         ranker_profile_fmg.add_text_fmg_entry(new_fight["@id"], fight_data["textData"]["arenaDescription"])
 
@@ -510,7 +519,7 @@ def compile_folder(progress_signal=None):
                     "@paramdexName": f"{param_name_prefix} Fighter #{fight_index + 1} Intro #{i}",
                     "@msgId": 600000000 + account_id * 1000 + 100 + i,
                     "@voiceId": 600000000 + account_id * 1000 + 100 + i,
-                    "@characterNameTextId": fight_data["textData"]["characterNameTextId"]
+                    "@characterNameTextId": fight_data["textData"].get("characterNameTextId", "200")
                 }
                 talk_param.add_param_entry(new_talk)
                 talk_msg_fmg.add_text_fmg_entry(new_talk["@id"], fight_data["textData"]["intro"][i])
@@ -522,7 +531,7 @@ def compile_folder(progress_signal=None):
                     "@paramdexName": f"{param_name_prefix} Fighter #{fight_index + 1} Outro #{i}",
                     "@msgId": 700000000 + account_id * 1000 + i,
                     "@voiceId": 700000000 + account_id * 1000 + i,
-                    "@characterNameTextId": fight_data["textData"]["characterNameTextId"]
+                    "@characterNameTextId": fight_data["textData"].get("characterNameTextId", "200")
                 }
                 talk_param.add_param_entry(new_talk)
                 talk_msg_fmg.add_text_fmg_entry(new_talk["@id"], fight_data["textData"]["outro"][i])
