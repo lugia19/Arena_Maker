@@ -5,3 +5,4 @@ xmltodict
 numpy
 soundfile
 pillow
+toml

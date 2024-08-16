@@ -370,7 +370,7 @@ def compile_folder(progress_signal=None):
     paths["bnk2json_path"] = os.path.join(paths["rewwise_path"], "bnk2json.exe")
     paths["game_directory"] = config["game_folder"]
     paths["wem_converter"] = os.path.join(resources_dir, "wem_converter.exe")
-    paths['mod_directory'] = config["mod_folder"]
+    paths["mod_directory"] = os.path.join(os.path.dirname(resources_dir), "mod")
 
     try:
         shutil.rmtree(paths['mod_directory'])

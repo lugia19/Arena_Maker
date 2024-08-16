@@ -6,6 +6,9 @@ import json
 import shutil
 import zipfile
 import webbrowser
+
+import toml
+
 import core
 import requests
 from PyQt6.QtWidgets import QApplication, QMainWindow, QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QListWidget, QPushButton, QLineEdit, QFileDialog, QMessageBox, QLabel, QWidget, QProgressBar
@@ -16,6 +19,47 @@ from customWidgets import DownloadDialog
 CONFIG_FILE = "config.json"
 
 FIGHTS_FOLDER = core.FIGHTS_FOLDER
+
+def launch_modengine2():
+    config = json.load(open(CONFIG_FILE, "r"))
+    resources_dir = os.path.join(os.path.dirname(__file__), "resources")
+    config_path = os.path.join(resources_dir, "custom_arena_config.toml")
+    mod_folder = os.path.join(os.path.dirname(__file__), "mod")
+
+    # Create custom_arena_config.toml if it doesn't exist
+    if not os.path.exists(config_path):
+        config_data = {
+            "modengine": {
+                "debug": False,
+                "external_dlls": []
+            },
+            "extension": {
+                "mod_loader": {
+                    "enabled": True,
+                    "loose_params": False,
+                    "mods": [
+                        {
+                            "enabled": True,
+                            "name": "CustomArena",
+                            "path": mod_folder
+                        }
+                    ]
+                },
+                "scylla_hide": {
+                    "enabled": False
+                }
+            }
+        }
+
+        with open(config_path, "w") as file:
+            toml_string = toml.dumps(config_data)
+            toml_string = toml_string.replace('"[[extension.mod_loader.mods]]"', '[[extension.mod_loader.mods]]')
+            file.write(toml_string)
+
+    # Launch modengine2 with the specified arguments
+    modengine2_path = config["me2_path"]
+    subprocess.Popen([modengine2_path, "-t", "ac6", "-c", config_path])
+
 class PathWidget(QWidget):
     def __init__(self, label_text, browse_text, link_url=None, is_file=True):
         super().__init__()
@@ -57,10 +101,10 @@ class Worker(QObject):
     progress = pyqtSignal(int, str)
     error = pyqtSignal(object)
     def run(self):
-        #try:
-        core.compile_folder(self.progress)
-        #except Exception as e:
-            #self.error.emit(e)
+        try:
+            core.compile_folder(self.progress)
+        except Exception as e:
+            self.error.emit(e)
 
         self.finished.emit()
 
@@ -100,8 +144,8 @@ class ProgressDialog(QDialog):
     def update_progress(self, value, status):
         self.progress_bar.setValue(value)
         self.status_label.setText(status)
-        if value == 100:
-            QMessageBox.information(self, "Success", "Mod has been compiled. Ensure it's enabled.")
+        #if value == 100:
+        #    QMessageBox.information(self, "Success", "Mod has been compiled. Ensure it's enabled.")
 
 class ConfigDialog(QDialog):
     def __init__(self, parent=None):
@@ -112,12 +156,13 @@ class ConfigDialog(QDialog):
 
         #self.wwise_studio_widget = PathWidget("WwiseConsole.exe Path:", "Browse", "https://www.audiokinetic.com/en/download/")
         #self.wwise_studio_widget.line_edit.setToolTip("The location of WwiseConsole.exe")
-        self.mod_folder_widget = PathWidget("Destination Mod Folder:", "Browse", is_file=False)
-        self.mod_folder_widget.line_edit.setToolTip("The folder where you want your finalized mod to go.")
+        self.modengine2_widget = PathWidget("ModEngine2 Location:", "Browse")
+        self.modengine2_widget.line_edit.setToolTip("The location of ModEngine2.exe")
+
         self.game_folder_widget = PathWidget("AC6 Game Folder:", "Browse", is_file=False)
         self.game_folder_widget.line_edit.setToolTip("Needs to have been unpacked using UXM.")
         #self.layout.addWidget(self.wwise_studio_widget)
-        self.layout.addWidget(self.mod_folder_widget)
+        self.layout.addWidget(self.modengine2_widget)
         self.layout.addWidget(self.game_folder_widget)
 
         button_layout = QHBoxLayout()
@@ -129,13 +174,13 @@ class ConfigDialog(QDialog):
         self.layout.addLayout(button_layout)
 
     def save_config(self):
-        #if not self.wwise_studio_widget.line_edit.text() or not self.mod_folder_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
-        if not self.mod_folder_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
+        #if not self.wwise_studio_widget.line_edit.text() or not self.modengine2_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
+        if not self.modengine2_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
             QMessageBox.warning(self, "Warning", "Please fill in all the required paths.")
         else:
             with open(CONFIG_FILE, "r") as fp: config = json.load(fp)
             #config["wwise_studio_path"] = self.wwise_studio_widget.line_edit.text().replace("/","\\")
-            config["mod_folder"] = self.mod_folder_widget.line_edit.text().replace("/","\\")
+            config["me2_path"] = self.modengine2_widget.line_edit.text().replace("/","\\")
             game_folder = self.game_folder_widget.line_edit.text()
             if not game_folder.endswith("Game"):
                 game_folder = os.path.join(game_folder, "Game")
@@ -146,8 +191,8 @@ class ConfigDialog(QDialog):
             self.accept()
 
     def closeEvent(self, event):
-        #if not self.wwise_studio_widget.line_edit.text() or not self.mod_folder_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
-        if not self.mod_folder_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
+        #if not self.wwise_studio_widget.line_edit.text() or not self.modengine2_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
+        if not self.modengine2_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
             QMessageBox.warning(self, "Warning", "Please fill in all the required paths.")
             event.ignore()
         else:
@@ -175,7 +220,7 @@ class MainWindow(QMainWindow):
 
         self.config_button = QPushButton("Config")
         self.config_button.clicked.connect(self.open_config)
-        self.compile_button = QPushButton("Compile")
+        self.compile_button = QPushButton("Launch")
         self.compile_button.clicked.connect(self.compile)
         self.open_folder_button = QPushButton("Open Folder")
         self.open_folder_button.clicked.connect(self.open_fights_folder)
@@ -311,9 +356,31 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "ERROR", "The game has not been unpacked using UXM. Please do so.")
             return
 
-        self.progress_dialog = ProgressDialog(self)
-        self.progress_dialog.start_task()
-        self.progress_dialog.exec()
+        # Check if the mod folder exists and last_run.txt matches the current folder order
+        resources_dir = os.path.join(os.path.dirname(__file__), "resources")
+        last_run_path = os.path.join(resources_dir, "last_run.txt")
+        mod_folder = os.path.join(os.path.dirname(__file__), "mod")
+        if os.path.exists(mod_folder) and os.path.exists(last_run_path):
+            with open(last_run_path, "r") as file:
+                last_run_order = file.read().strip()
+            current_order = ",".join([self.folder_list.item(i).text() for i in range(self.folder_list.count())])
+            if last_run_order == current_order:
+                reply = QMessageBox.question(self, "Skip Compilation", "The mod folder already exists and the folder order hasn't changed. Do you want to skip the compilation?",
+                                             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+                if reply == QMessageBox.StandardButton.Yes:
+                    launch_modengine2()
+                    return
+
+        progress_dialog = ProgressDialog(self)
+        progress_dialog.start_task()
+        progress_dialog.exec()
+
+        # Save the current folder order to last_run.txt
+        current_order = ",".join([self.folder_list.item(i).text() for i in range(self.folder_list.count())])
+        with open(last_run_path, "w") as file:
+            file.write(current_order)
+
+        launch_modengine2()
 
 
     def load_folder_order(self):
@@ -394,13 +461,13 @@ class MainWindow(QMainWindow):
                         config["wwise_studio_path"] = wwise_console_path
 
             #self.config_dialog.wwise_studio_widget.line_edit.setText(config.get("wwise_studio_path", ""))
-            self.config_dialog.mod_folder_widget.line_edit.setText(config.get("mod_folder", ""))
+            self.config_dialog.modengine2_widget.line_edit.setText(config.get("me2_path", ""))
             self.config_dialog.game_folder_widget.line_edit.setText(config.get("game_folder", ""))
 
     def save_config(self):
         with open(CONFIG_FILE, "r") as file: config = json.load(file)
         #config["wwise_studio_path"] = self.config_dialog.wwise_studio_widget.line_edit.text()
-        config["mod_folder"] = self.config_dialog.mod_folder_widget.line_edit.text()
+        config["me2_path"] = self.config_dialog.modengine2_widget.line_edit.text()
         config["game_folder"] = self.config_dialog.game_folder_widget.line_edit.text()
 
         with open(CONFIG_FILE, 'w') as file:
@@ -496,8 +563,8 @@ if __name__ == "__main__":
 
     check_tools()
     # Check if the required paths are specified
-    #if not main_window.config_dialog.wwise_studio_widget.line_edit.text() or not main_window.config_dialog.mod_folder_widget.line_edit.text() or not main_window.config_dialog.game_folder_widget.line_edit.text():
-    if not main_window.config_dialog.mod_folder_widget.line_edit.text() or not main_window.config_dialog.game_folder_widget.line_edit.text():
+    #if not main_window.config_dialog.wwise_studio_widget.line_edit.text() or not main_window.config_dialog.modengine2_widget.line_edit.text() or not main_window.config_dialog.game_folder_widget.line_edit.text():
+    if not main_window.config_dialog.modengine2_widget.line_edit.text() or not main_window.config_dialog.game_folder_widget.line_edit.text():
         main_window.open_config()
 
 
