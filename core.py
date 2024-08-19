@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import json
+import zipfile
 from typing import Union, List
 
 import numpy
@@ -1078,11 +1079,26 @@ def run_witchy(path:str, recursive:bool=False):
     #run_exe_shell_hack(paths["witchybnd_path"], args)
 
 
-def copy_file_from_game_folder_if_missing(relative_file_path:str) -> bool:
+def copy_file_from_game_folder_if_missing(relative_file_path: str) -> bool:
+    resources_dir = os.path.join(os.path.dirname(__file__), "resources")
+    game_data_dir = os.path.join(resources_dir, "game_data")
+
+    if not os.path.exists(game_data_dir):
+        # Check if game_data.zip exists in the resources directory
+        game_data_zip = os.path.join(resources_dir, "game_data.zip")
+        if os.path.exists(game_data_zip):
+            # Extract game_data.zip to the resources directory
+            with zipfile.ZipFile(game_data_zip, 'r') as zip_ref:
+                zip_ref.extractall(resources_dir)
+        else:
+            raise FileNotFoundError("Neither 'game_data' folder nor 'game_data.zip' found in the resources directory.")
+
+    source_file = os.path.join(game_data_dir, relative_file_path)
     destination_file = os.path.join(paths['mod_directory'], relative_file_path)
     os.makedirs(os.path.dirname(destination_file), exist_ok=True)
+
     if not os.path.exists(destination_file):
-        shutil.copy(os.path.join(paths["game_directory"], relative_file_path), destination_file)
+        shutil.copy(source_file, destination_file)
         return True
     return False
 

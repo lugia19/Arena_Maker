@@ -159,11 +159,11 @@ class ConfigDialog(QDialog):
         self.modengine2_widget = PathWidget("ModEngine2 Location:", "Browse")
         self.modengine2_widget.line_edit.setToolTip("The location of ModEngine2.exe")
 
-        self.game_folder_widget = PathWidget("AC6 Game Folder:", "Browse", is_file=False)
-        self.game_folder_widget.line_edit.setToolTip("Needs to have been unpacked using UXM.")
+        #self.game_folder_widget = PathWidget("AC6 Game Folder:", "Browse", is_file=False)
+        #self.game_folder_widget.line_edit.setToolTip("Needs to have been unpacked using UXM.")
         #self.layout.addWidget(self.wwise_studio_widget)
         self.layout.addWidget(self.modengine2_widget)
-        self.layout.addWidget(self.game_folder_widget)
+        #self.layout.addWidget(self.game_folder_widget)
 
         button_layout = QHBoxLayout()
         button_layout.addStretch()
@@ -175,24 +175,24 @@ class ConfigDialog(QDialog):
 
     def save_config(self):
         #if not self.wwise_studio_widget.line_edit.text() or not self.modengine2_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
-        if not self.modengine2_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
+        if not self.modengine2_widget.line_edit.text():
             QMessageBox.warning(self, "Warning", "Please fill in all the required paths.")
         else:
             with open(CONFIG_FILE, "r") as fp: config = json.load(fp)
             #config["wwise_studio_path"] = self.wwise_studio_widget.line_edit.text().replace("/","\\")
             config["me2_path"] = self.modengine2_widget.line_edit.text().replace("/","\\")
-            game_folder = self.game_folder_widget.line_edit.text()
-            if not game_folder.endswith("Game"):
-                game_folder = os.path.join(game_folder, "Game")
-                self.game_folder_widget.line_edit.setText(game_folder)
-            config["game_folder"] = game_folder.replace("/","\\")
+            #game_folder = self.game_folder_widget.line_edit.text()
+            #if not game_folder.endswith("Game"):
+            #    game_folder = os.path.join(game_folder, "Game")
+            #    self.game_folder_widget.line_edit.setText(game_folder)
+            #config["game_folder"] = game_folder.replace("/","\\")
             with open(CONFIG_FILE, 'w') as file:
                 json.dump(config, file, indent=4)
             self.accept()
 
     def closeEvent(self, event):
         #if not self.wwise_studio_widget.line_edit.text() or not self.modengine2_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
-        if not self.modengine2_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
+        if not self.modengine2_widget.line_edit.text():
             QMessageBox.warning(self, "Warning", "Please fill in all the required paths.")
             event.ignore()
         else:
@@ -462,13 +462,13 @@ class MainWindow(QMainWindow):
 
             #self.config_dialog.wwise_studio_widget.line_edit.setText(config.get("wwise_studio_path", ""))
             self.config_dialog.modengine2_widget.line_edit.setText(config.get("me2_path", ""))
-            self.config_dialog.game_folder_widget.line_edit.setText(config.get("game_folder", ""))
+            #self.config_dialog.game_folder_widget.line_edit.setText(config.get("game_folder", ""))
 
     def save_config(self):
         with open(CONFIG_FILE, "r") as file: config = json.load(file)
         #config["wwise_studio_path"] = self.config_dialog.wwise_studio_widget.line_edit.text()
         config["me2_path"] = self.config_dialog.modengine2_widget.line_edit.text()
-        config["game_folder"] = self.config_dialog.game_folder_widget.line_edit.text()
+        #config["game_folder"] = self.config_dialog.game_folder_widget.line_edit.text()
 
         with open(CONFIG_FILE, 'w') as file:
             json.dump(config, file, indent=4)
@@ -564,7 +564,7 @@ if __name__ == "__main__":
     check_tools()
     # Check if the required paths are specified
     #if not main_window.config_dialog.wwise_studio_widget.line_edit.text() or not main_window.config_dialog.modengine2_widget.line_edit.text() or not main_window.config_dialog.game_folder_widget.line_edit.text():
-    if not main_window.config_dialog.modengine2_widget.line_edit.text() or not main_window.config_dialog.game_folder_widget.line_edit.text():
+    if not main_window.config_dialog.modengine2_widget.line_edit.text():
         main_window.open_config()
 
 
