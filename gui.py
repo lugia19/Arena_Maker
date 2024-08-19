@@ -21,14 +21,13 @@ CONFIG_FILE = "config.json"
 FIGHTS_FOLDER = core.FIGHTS_FOLDER
 
 def launch_modengine2():
-    config = json.load(open(CONFIG_FILE, "r"))
     resources_dir = os.path.join(os.path.dirname(__file__), "resources")
-    config_path = os.path.join(resources_dir, "custom_arena_config.toml")
+    me2_config_path = os.path.join(resources_dir, "custom_arena_config.toml")
     mod_folder = os.path.join(os.path.dirname(__file__), "mod")
 
     # Create custom_arena_config.toml if it doesn't exist
-    if not os.path.exists(config_path):
-        config_data = {
+    if not os.path.exists(me2_config_path):
+        me2_config_data = {
             "modengine": {
                 "debug": False,
                 "external_dlls": []
@@ -51,14 +50,22 @@ def launch_modengine2():
             }
         }
 
-        with open(config_path, "w") as file:
-            toml_string = toml.dumps(config_data)
+        with open(me2_config_path, "w") as file:
+            toml_string = toml.dumps(me2_config_data)
             toml_string = toml_string.replace('"[[extension.mod_loader.mods]]"', '[[extension.mod_loader.mods]]')
             file.write(toml_string)
 
     # Launch modengine2 with the specified arguments
-    modengine2_path = config["me2_path"]
-    subprocess.Popen([modengine2_path, "-t", "ac6", "-c", config_path])
+    me2_dir = os.path.join(resources_dir, "me2")
+    os.makedirs(me2_dir, exist_ok=True)
+    me2_exe = os.path.join(me2_dir, "modengine2_launcher.exe")
+    if not os.path.exists(me2_exe):
+        me2_zip = os.path.join(resources_dir, "modengine-sound-build.zip")
+        with zipfile.ZipFile(me2_zip, 'r') as zip_ref:
+            zip_ref.extractall(me2_dir)
+
+    modengine2_path = os.path.join(resources_dir, "me2", "modengine2_launcher.exe")
+    subprocess.Popen([modengine2_path, "-t", "ac6", "-c", me2_config_path])
 
 class PathWidget(QWidget):
     def __init__(self, label_text, browse_text, link_url=None, is_file=True):
@@ -147,57 +154,6 @@ class ProgressDialog(QDialog):
         #if value == 100:
         #    QMessageBox.information(self, "Success", "Mod has been compiled. Ensure it's enabled.")
 
-class ConfigDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Configuration")
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
-
-        #self.wwise_studio_widget = PathWidget("WwiseConsole.exe Path:", "Browse", "https://www.audiokinetic.com/en/download/")
-        #self.wwise_studio_widget.line_edit.setToolTip("The location of WwiseConsole.exe")
-        self.modengine2_widget = PathWidget("ModEngine2 Location:", "Browse")
-        self.modengine2_widget.line_edit.setToolTip("The location of ModEngine2.exe")
-
-        #self.game_folder_widget = PathWidget("AC6 Game Folder:", "Browse", is_file=False)
-        #self.game_folder_widget.line_edit.setToolTip("Needs to have been unpacked using UXM.")
-        #self.layout.addWidget(self.wwise_studio_widget)
-        self.layout.addWidget(self.modengine2_widget)
-        #self.layout.addWidget(self.game_folder_widget)
-
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-        self.save_button = QPushButton("Save")
-        self.save_button.clicked.connect(self.save_config)
-        button_layout.addWidget(self.save_button)
-
-        self.layout.addLayout(button_layout)
-
-    def save_config(self):
-        #if not self.wwise_studio_widget.line_edit.text() or not self.modengine2_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
-        if not self.modengine2_widget.line_edit.text():
-            QMessageBox.warning(self, "Warning", "Please fill in all the required paths.")
-        else:
-            with open(CONFIG_FILE, "r") as fp: config = json.load(fp)
-            #config["wwise_studio_path"] = self.wwise_studio_widget.line_edit.text().replace("/","\\")
-            config["me2_path"] = self.modengine2_widget.line_edit.text().replace("/","\\")
-            #game_folder = self.game_folder_widget.line_edit.text()
-            #if not game_folder.endswith("Game"):
-            #    game_folder = os.path.join(game_folder, "Game")
-            #    self.game_folder_widget.line_edit.setText(game_folder)
-            #config["game_folder"] = game_folder.replace("/","\\")
-            with open(CONFIG_FILE, 'w') as file:
-                json.dump(config, file, indent=4)
-            self.accept()
-
-    def closeEvent(self, event):
-        #if not self.wwise_studio_widget.line_edit.text() or not self.modengine2_widget.line_edit.text() or not self.game_folder_widget.line_edit.text():
-        if not self.modengine2_widget.line_edit.text():
-            QMessageBox.warning(self, "Warning", "Please fill in all the required paths.")
-            event.ignore()
-        else:
-            event.accept()
-
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -218,12 +174,13 @@ class MainWindow(QMainWindow):
         self.remove_button = QPushButton("Remove")
         self.remove_button.clicked.connect(self.remove_folder)
 
-        self.config_button = QPushButton("Config")
-        self.config_button.clicked.connect(self.open_config)
         self.compile_button = QPushButton("Launch")
         self.compile_button.clicked.connect(self.compile)
-        self.open_folder_button = QPushButton("Open Folder")
+        self.open_folder_button = QPushButton("Open Fights")
         self.open_folder_button.clicked.connect(self.open_fights_folder)
+
+        self.open_mod_button = QPushButton("Open Mod")
+        self.open_mod_button.clicked.connect(self.open_mods_folder)
 
         button_layout = QVBoxLayout()
         button_layout.addWidget(self.up_button)
@@ -234,7 +191,7 @@ class MainWindow(QMainWindow):
         bottom_layout_1.addWidget(self.remove_button)
         bottom_layout_1.addWidget(self.open_folder_button)
         bottom_layout_2 = QHBoxLayout()
-        bottom_layout_2.addWidget(self.config_button)
+        bottom_layout_2.addWidget(self.open_mod_button)
         bottom_layout_2.addWidget(self.compile_button)
 
         list_layout = QHBoxLayout()
@@ -245,8 +202,6 @@ class MainWindow(QMainWindow):
         self.layout.addLayout(bottom_layout_1)
         self.layout.addLayout(bottom_layout_2)
 
-        self.config_dialog = ConfigDialog(self)
-        self.load_config()
         self.load_folders()
 
     def open_fights_folder(self):
@@ -255,7 +210,21 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.warning(self, "Error", "Fights folder not found.")
 
+    def open_mods_folder(self):
+        mod_folder = os.path.join(os.path.dirname(__file__), "mod")
+        os.makedirs(mod_folder, exist_ok=True)
+        os.startfile(mod_folder)
+
     def load_folders(self):
+        if not os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, "w") as fp: fp.write("{}")
+
+            #Copy over sample fight
+            os.makedirs(FIGHTS_FOLDER, exist_ok=True)
+            zip_path = os.path.join("resources", "example_fights.zip")
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(FIGHTS_FOLDER)
+
         folder_order = self.load_folder_order()
         self.folder_list.clear()
         updated_folder_order = []
@@ -347,15 +316,7 @@ class MainWindow(QMainWindow):
                 self.folder_list.takeItem(self.folder_list.row(current_item))
                 self.save_folder_order()
 
-    def open_config(self):
-        self.config_dialog.exec()
-
     def compile(self):
-        config = json.load(open(CONFIG_FILE, "r"))
-        if not os.path.exists(os.path.join(config["game_folder"], "param")):
-            QMessageBox.critical(self, "ERROR", "The game has not been unpacked using UXM. Please do so.")
-            return
-
         # Check if the mod folder exists and last_run.txt matches the current folder order
         resources_dir = os.path.join(os.path.dirname(__file__), "resources")
         last_run_path = os.path.join(resources_dir, "last_run.txt")
@@ -411,65 +372,6 @@ class MainWindow(QMainWindow):
             with open(CONFIG_FILE, 'r') as file:
                 config = json.load(file)
         config["folder_order"] = folder_order
-        with open(CONFIG_FILE, 'w') as file:
-            json.dump(config, file, indent=4)
-
-    def load_config(self):
-        if not os.path.exists(CONFIG_FILE):
-            with open(CONFIG_FILE, "w") as fp: fp.write("{}")
-
-            #Copy over sample fight
-            os.makedirs(FIGHTS_FOLDER, exist_ok=True)
-            zip_path = os.path.join("resources", "example_fights.zip")
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(FIGHTS_FOLDER)
-
-            msg_box = QMessageBox()
-            msg_box.setWindowTitle("Attention!")
-            msg_box.setText("This appears to be your first time running this tool.\n"
-                            "If you want to be able to hear custom audio files and music, please make sure you are on the correct build of ModEngine2.\n"
-                            "If you simply downloaded it off of github, then you are not, so click Download to get and install the correct version.")
-            msg_box.addButton("Okay", QMessageBox.ButtonRole.AcceptRole)
-            open_link_button = msg_box.addButton("Download", QMessageBox.ButtonRole.ActionRole)
-            msg_box.exec()
-
-            # Check which button was clicked
-            if msg_box.clickedButton() == open_link_button:
-                webbrowser.open("https://drive.proton.me/urls/DVXY4PQQX0#BuUpaVfPP3IU")
-
-        with open(CONFIG_FILE, 'r') as file:
-            config = json.load(file)
-            if False and not config.get("wwise_studio_path"):
-                audiokinetic_path = r"C:\Program Files (x86)\Audiokinetic"
-                if os.path.exists(audiokinetic_path):
-                    wwise_folders = [folder for folder in os.listdir(audiokinetic_path) if "Wwise" in folder]
-                    wwise_folder = None
-                    for folder in wwise_folders:
-                        if "Wwise2023" in folder:
-                            wwise_folder = folder
-                            config["wwise_studio_path"] = folder
-                            break
-
-                    if not wwise_folder:
-                        for folder in wwise_folders:
-                            wwise_console_path = os.path.join(audiokinetic_path, folder, "Authoring", "x64", "Release", "bin", "WwiseConsole.exe")
-                            if os.path.exists(wwise_console_path):
-                                config["wwise_studio_path"] = wwise_console_path
-                                break
-                    else:
-                        wwise_console_path = os.path.join(audiokinetic_path, wwise_folder, "Authoring", "x64", "Release", "bin", "WwiseConsole.exe")
-                        config["wwise_studio_path"] = wwise_console_path
-
-            #self.config_dialog.wwise_studio_widget.line_edit.setText(config.get("wwise_studio_path", ""))
-            self.config_dialog.modengine2_widget.line_edit.setText(config.get("me2_path", ""))
-            #self.config_dialog.game_folder_widget.line_edit.setText(config.get("game_folder", ""))
-
-    def save_config(self):
-        with open(CONFIG_FILE, "r") as file: config = json.load(file)
-        #config["wwise_studio_path"] = self.config_dialog.wwise_studio_widget.line_edit.text()
-        config["me2_path"] = self.config_dialog.modengine2_widget.line_edit.text()
-        #config["game_folder"] = self.config_dialog.game_folder_widget.line_edit.text()
-
         with open(CONFIG_FILE, 'w') as file:
             json.dump(config, file, indent=4)
 
@@ -562,11 +464,5 @@ if __name__ == "__main__":
     main_window.show()
 
     check_tools()
-    # Check if the required paths are specified
-    #if not main_window.config_dialog.wwise_studio_widget.line_edit.text() or not main_window.config_dialog.modengine2_widget.line_edit.text() or not main_window.config_dialog.game_folder_widget.line_edit.text():
-    if not main_window.config_dialog.modengine2_widget.line_edit.text():
-        main_window.open_config()
-
-
 
     sys.exit(app.exec())
