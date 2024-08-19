@@ -1,3 +1,4 @@
+import hashlib
 import os
 import re
 import subprocess
@@ -439,6 +440,19 @@ def check_tools():
                 zip_ref.extractall(ffdec_dir)
 
         config["ffdec_release"] = ffdec_release[0]
+
+    game_data_zip = os.path.join(resources_dir, "game_data.zip")
+    if os.path.exists(game_data_zip):
+        with open(game_data_zip, 'rb') as file:
+            game_data_hash = hashlib.sha1(file.read()).hexdigest()
+    else:
+        game_data_hash = None
+
+    expected_hash = "d31015d76a13165c66ea58276cfe04449de3f577"
+    download_url = "https://f004.backblazeb2.com/file/lugia19/game_data.zip"
+    if not game_data_hash or game_data_hash != expected_hash:
+        DownloadDialog(f"Downloading base game files...", download_url, game_data_zip).exec()
+
     with open(CONFIG_FILE, "w") as fp: json.dump(config, fp, indent=4)
 
 
