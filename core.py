@@ -9,12 +9,18 @@ import zipfile
 from typing import Union, List
 
 import numpy
+import platformdirs
 import xmltodict
 from PIL import ImageDraw, ImageFont, ImageColor, Image, ImageOps, ImageFilter
 
 import soundfile as sf
 
-FIGHTS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fights")
+
+TOOLS_FOLDER = platformdirs.user_data_dir(appauthor="lugia19", roaming=True, appname="ac6_tools")
+VERSIONS_FILE = os.path.join(TOOLS_FOLDER, "versions.json")
+ARENA_MAKER_DATA_FOLDER = platformdirs.user_data_dir(appauthor="lugia19", roaming=True, appname="ac6_arena_maker")
+FIGHTS_FOLDER = os.path.join(ARENA_MAKER_DATA_FOLDER, "fights")
+
 os.makedirs(FIGHTS_FOLDER, exist_ok=True)
 paths = {}
 
@@ -361,17 +367,16 @@ def compile_folder(progress_signal=None):
         progress_signal = DummySignal()
 
     resources_dir = os.path.join(os.path.dirname(__file__), "resources")
-    paths["witchybnd_path"] = os.path.join(resources_dir, "witchybnd", "WitchyBND.exe")
+    paths["witchybnd_path"] = os.path.join(TOOLS_FOLDER, "witchybnd", "WitchyBND.exe")
     paths["fights_directory"] = FIGHTS_FOLDER
-    paths["ffdec_path"] = os.path.join(resources_dir, "ffdec", "ffdec.bat")
-    paths["rewwise_path"] = os.path.join(resources_dir, "rewwise")
-    paths["conversion_script_path"] = os.path.join("wem_conversion.py")
-    paths["texconv_path"] = os.path.join(resources_dir, "texconv.exe")
+    paths["ffdec_path"] = os.path.join(TOOLS_FOLDER, "ffdec", "ffdec.bat")
+    paths["rewwise_path"] = os.path.join(TOOLS_FOLDER, "rewwise")
+    paths["texconv_path"] = os.path.join(TOOLS_FOLDER, "DirectXTex", "texconv.exe")
     paths["fnv_hash_path"] = os.path.join(paths["rewwise_path"], "fnv-hash.exe")
     paths["bnk2json_path"] = os.path.join(paths["rewwise_path"], "bnk2json.exe")
-    paths["game_directory"] = config["game_folder"]
     paths["wem_converter"] = os.path.join(resources_dir, "wem_converter.exe")
-    paths["mod_directory"] = os.path.join(os.path.dirname(resources_dir), "mod")
+
+    paths["mod_directory"] = os.path.join(ARENA_MAKER_DATA_FOLDER, "mod")
 
     try:
         shutil.rmtree(paths['mod_directory'])
@@ -771,21 +776,6 @@ def process_audio_files(subfolder_path, account_id, soundbnk, file_data):
 
             filename = os.path.basename(filepath)
             if filename.lower().endswith((".wav", ".mp3", ".ogg", ".flac")):
-                if False:
-                    audio_subfolder_path = os.path.dirname(filepath)
-                    wav_filename = os.path.splitext(filename)[0] + ".wav"
-                    wav_filepath = os.path.join(audio_subfolder_path, wav_filename)
-
-                    if filename.lower().endswith(".wav"):
-                        audio_filepath = os.path.join(audio_subfolder_path, filename)
-                    else:
-                        audio_data, sample_rate = sf.read(os.path.join(audio_subfolder_path, filename))
-                        sf.write(wav_filepath, audio_data, sample_rate, format='WAV')
-                        audio_filepath = wav_filepath
-
-                    command = ["python", paths["conversion_script_path"], audio_filepath]
-                    subprocess.run(command, check=True)
-
                 wem_file = convert_to_wem(filepath)
                 offset = audio_file_list.index(filepath)
                 talk_id = 600000000 + int(account_id) * 1000 + 100 + offset if audio_file_list == intro_audio_paths else 700000000 + int(account_id) * 1000 + offset
@@ -797,9 +787,6 @@ def process_audio_files(subfolder_path, account_id, soundbnk, file_data):
                 if os.path.exists(new_wem_filepath):
                     print(f"Warning - overwriting existing file {new_wem_filename}.")
                 shutil.move(wem_file, new_wem_filepath)
-
-                if False and wav_filename.lower() != filename.lower():
-                    os.remove(wav_filepath)
 
                 soundbnk.add_event(talk_id, is_play=True, sound_filename=new_wem_filename)
                 soundbnk.add_event(talk_id, is_play=False, sound_filename=new_wem_filename)
@@ -1080,18 +1067,17 @@ def run_witchy(path:str, recursive:bool=False):
 
 
 def copy_file_from_game_folder_if_missing(relative_file_path: str) -> bool:
-    resources_dir = os.path.join(os.path.dirname(__file__), "resources")
-    game_data_dir = os.path.join(resources_dir, "game_data")
+    game_data_dir = os.path.join(ARENA_MAKER_DATA_FOLDER, "game_data")
 
     if not os.path.exists(game_data_dir):
         # Check if game_data.zip exists in the resources directory
-        game_data_zip = os.path.join(resources_dir, "game_data.zip")
+        game_data_zip = os.path.join(ARENA_MAKER_DATA_FOLDER, "game_data.zip")
         if os.path.exists(game_data_zip):
             # Extract game_data.zip to the resources directory
             with zipfile.ZipFile(game_data_zip, 'r') as zip_ref:
-                zip_ref.extractall(resources_dir)
+                zip_ref.extractall(ARENA_MAKER_DATA_FOLDER)
         else:
-            raise FileNotFoundError("Neither 'game_data' folder nor 'game_data.zip' found in the resources directory.")
+            raise FileNotFoundError(f"Neither 'game_data' folder nor 'game_data.zip' found in the {ARENA_MAKER_DATA_FOLDER} directory.")
 
     source_file = os.path.join(game_data_dir, relative_file_path)
     destination_file = os.path.join(paths['mod_directory'], relative_file_path)

@@ -9,8 +9,7 @@ import zipfile
 import webbrowser
 
 import toml
-
-import core
+from core import *
 import requests
 from PyQt6.QtWidgets import QApplication, QMainWindow, QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QListWidget, QPushButton, QLineEdit, QFileDialog, QMessageBox, QLabel, QWidget, QProgressBar
 from PyQt6.QtCore import Qt, QObject, pyqtSignal, QThread
@@ -19,12 +18,10 @@ from customWidgets import DownloadDialog
 
 CONFIG_FILE = "config.json"
 
-FIGHTS_FOLDER = core.FIGHTS_FOLDER
-
 def launch_modengine2():
     resources_dir = os.path.join(os.path.dirname(__file__), "resources")
-    me2_config_path = os.path.join(resources_dir, "custom_arena_config.toml")
-    mod_folder = os.path.join(os.path.dirname(__file__), "mod")
+    me2_config_path = os.path.join(ARENA_MAKER_DATA_FOLDER, "custom_arena_config.toml")
+    mod_folder = os.path.join(ARENA_MAKER_DATA_FOLDER, "mod")
 
     # Create custom_arena_config.toml if it doesn't exist
     if not os.path.exists(me2_config_path):
@@ -57,7 +54,7 @@ def launch_modengine2():
             file.write(toml_string)
 
     # Launch modengine2 with the specified arguments
-    me2_dir = os.path.join(resources_dir, "me2")
+    me2_dir = os.path.join(TOOLS_FOLDER, "me2")
     os.makedirs(me2_dir, exist_ok=True)
     me2_exe = os.path.join(me2_dir, "modengine2_launcher.exe")
     if not os.path.exists(me2_exe):
@@ -65,8 +62,7 @@ def launch_modengine2():
         with zipfile.ZipFile(me2_zip, 'r') as zip_ref:
             zip_ref.extractall(me2_dir)
 
-    modengine2_path = os.path.join(resources_dir, "me2", "modengine2_launcher.exe")
-    subprocess.Popen([modengine2_path, "-t", "ac6", "-c", me2_config_path])
+    subprocess.Popen([me2_exe, "-t", "ac6", "-c", me2_config_path])
 
 class PathWidget(QWidget):
     def __init__(self, label_text, browse_text, link_url=None, is_file=True):
@@ -109,8 +105,9 @@ class Worker(QObject):
     progress = pyqtSignal(int, str)
     error = pyqtSignal(object)
     def run(self):
+        compile_folder(self.progress)
         try:
-            core.compile_folder(self.progress)
+            pass
         except Exception as e:
             self.error.emit(e)
 
@@ -212,7 +209,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Error", "Fights folder not found.")
 
     def open_mods_folder(self):
-        mod_folder = os.path.join(os.path.dirname(__file__), "mod")
+        mod_folder = os.path.join(ARENA_MAKER_DATA_FOLDER, "mod")
         os.makedirs(mod_folder, exist_ok=True)
         os.startfile(mod_folder)
 
@@ -319,9 +316,8 @@ class MainWindow(QMainWindow):
 
     def compile(self):
         # Check if the mod folder exists and last_run.txt matches the current folder order
-        resources_dir = os.path.join(os.path.dirname(__file__), "resources")
-        last_run_path = os.path.join(resources_dir, "last_run.txt")
-        mod_folder = os.path.join(os.path.dirname(__file__), "mod")
+        last_run_path = os.path.join(ARENA_MAKER_DATA_FOLDER, "last_run.txt")
+        mod_folder = os.path.join(ARENA_MAKER_DATA_FOLDER, "mod")
         if os.path.exists(mod_folder) and os.path.exists(last_run_path):
             with open(last_run_path, "r") as file:
                 last_run_order = file.read().strip()
@@ -349,7 +345,7 @@ class MainWindow(QMainWindow):
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, 'r') as file:
                 config = json.load(file)
-                folder_order = config.get("folder_order", None)
+                folder_order = config.get("folder_order", [])
 
         for folder_name in os.listdir(FIGHTS_FOLDER):
             folder_path = os.path.join(FIGHTS_FOLDER, folder_name)
@@ -390,48 +386,51 @@ def get_github_release(repo_owner, repo_name, tag=None) -> (str, list):
         return None
 
 def check_tools():
-    root_dir = os.path.dirname(__file__)
-    resources_dir = os.path.join(root_dir, "resources")
+    os.makedirs(TOOLS_FOLDER, exist_ok=True)
 
-    rewwise_dir = os.path.join(resources_dir, "rewwise")
-    os.makedirs(rewwise_dir, exist_ok=True)
+    if not os.path.exists(VERSIONS_FILE):
+        with open(VERSIONS_FILE, "w") as fp:
+            json.dump({}, fp)
 
-    with open(CONFIG_FILE, 'r') as file:
-        config = json.load(file)
+    with open(VERSIONS_FILE, 'r') as file:
+        versions = json.load(file)
+
+    rewwise_dir = os.path.join(TOOLS_FOLDER, "rewwise")
+
     latest_rewwise_release = get_github_release("vswarte", "rewwise")
-    if latest_rewwise_release and config.get("rewwise_release", "0.0") != latest_rewwise_release[0]:
+    if latest_rewwise_release and versions.get("rewwise_release", "0.0") != latest_rewwise_release[0]:
         zip_path = os.path.join(rewwise_dir, "rewwise.zip")
         DownloadDialog(f"Downloading rewwise", "https://github.com/vswarte/rewwise/releases/latest/download/binaries.zip", zip_path).exec()
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(rewwise_dir)
-        config["rewwise_release"] = latest_rewwise_release[0]
+        versions["rewwise_release"] = latest_rewwise_release[0]
 
-    texconv_path = os.path.join(resources_dir, "texconv.exe")
+    texconv_path = os.path.join(TOOLS_FOLDER, "DirectXTex", "texconv.exe")
+    os.makedirs(os.path.join(TOOLS_FOLDER, "DirectXTex"))
     latest_texconv_release = get_github_release("microsoft", "DirectXTex")
-    if latest_texconv_release and config.get("texconv_release", "0.0") != latest_texconv_release[0]:
+    if latest_texconv_release and versions.get("texconv_release", "0.0") != latest_texconv_release[0]:
         DownloadDialog(f"Downloading texconv", "https://github.com/microsoft/DirectXTex/releases/latest/download/texconv.exe", texconv_path).exec()
-        config["texconv_release"] = latest_texconv_release[0]
+        versions["texconv_release"] = latest_texconv_release[0]
 
-    witchy_dir = os.path.join(resources_dir, "witchybnd")
+    witchy_dir = os.path.join(TOOLS_FOLDER, "witchybnd")
     os.makedirs(witchy_dir, exist_ok=True)
     latest_witchy_release = get_github_release("ividyon", "WitchyBND")
-    if latest_witchy_release and config.get("witchy_release", "0.0") != latest_witchy_release[0]:
+    if latest_witchy_release and versions.get("witchy_release", "0.0") != latest_witchy_release[0]:
         zip_path = os.path.join(witchy_dir, "witchy.zip")
         DownloadDialog(f"Downloading WitchyBND", latest_witchy_release[1][0]["browser_download_url"], zip_path).exec()
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(witchy_dir)
 
-        config["witchy_release"] = latest_witchy_release[0]
+        versions["witchy_release"] = latest_witchy_release[0]
 
-
-    ffdec_dir = os.path.join(resources_dir, "ffdec")
+    ffdec_dir = os.path.join(TOOLS_FOLDER, "ffdec")
     os.makedirs(ffdec_dir, exist_ok=True)
     ffdec_release = get_github_release("jindrapetrik", "jpexs-decompiler", tag="version20.1.0")
-    if ffdec_release and config.get("ffdec_release", "0.0") != ffdec_release[0]:
+    if ffdec_release and versions.get("ffdec_release", "0.0") != ffdec_release[0]:
         zip_path = os.path.join(ffdec_dir, "ffdec.zip")
         download_url = None
         for asset in ffdec_release[1]:
-            if re.match("ffdec_(\d+\.)+zip", asset["name"]):
+            if re.match("ffdec(\d+\.)+zip", asset["name"]):
                 download_url = asset["browser_download_url"]
                 break
         if download_url:
@@ -439,9 +438,9 @@ def check_tools():
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(ffdec_dir)
 
-        config["ffdec_release"] = ffdec_release[0]
+        versions["ffdec_release"] = ffdec_release[0]
 
-    game_data_zip = os.path.join(resources_dir, "game_data.zip")
+    game_data_zip = os.path.join(ARENA_MAKER_DATA_FOLDER, "game_data.zip")
     if os.path.exists(game_data_zip):
         with open(game_data_zip, 'rb') as file:
             game_data_hash = hashlib.sha1(file.read()).hexdigest()
@@ -452,8 +451,6 @@ def check_tools():
     download_url = "https://f004.backblazeb2.com/file/lugia19/game_data.zip"
     if not game_data_hash or game_data_hash != expected_hash:
         DownloadDialog(f"Downloading base game files...", download_url, game_data_zip).exec()
-
-    with open(CONFIG_FILE, "w") as fp: json.dump(config, fp, indent=4)
 
 
 if __name__ == "__main__":
