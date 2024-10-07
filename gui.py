@@ -174,10 +174,10 @@ class MainWindow(QMainWindow):
 
         self.compile_button = QPushButton("Launch")
         self.compile_button.clicked.connect(self.compile)
-        self.open_folder_button = QPushButton("Open Fights")
+        self.open_folder_button = QPushButton("Open Fights Dir")
         self.open_folder_button.clicked.connect(self.open_fights_folder)
 
-        self.open_mod_button = QPushButton("Open Mod")
+        self.open_mod_button = QPushButton("Open Compiled Mod Dir")
         self.open_mod_button.clicked.connect(self.open_mods_folder)
 
         button_layout = QVBoxLayout()
