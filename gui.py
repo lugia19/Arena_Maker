@@ -398,35 +398,35 @@ def check_tools():
     rewwise_dir = os.path.join(TOOLS_FOLDER, "rewwise")
 
     latest_rewwise_release = get_github_release("vswarte", "rewwise")
-    if latest_rewwise_release and versions.get("rewwise_release", "0.0") != latest_rewwise_release[0]:
+    if latest_rewwise_release and versions.get("rewwise", "0.0") != latest_rewwise_release[0]:
         zip_path = os.path.join(rewwise_dir, "rewwise.zip")
         DownloadDialog(f"Downloading rewwise", "https://github.com/vswarte/rewwise/releases/latest/download/binaries.zip", zip_path).exec()
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(rewwise_dir)
-        versions["rewwise_release"] = latest_rewwise_release[0]
+        versions["rewwise"] = latest_rewwise_release[0]
 
     texconv_path = os.path.join(TOOLS_FOLDER, "DirectXTex", "texconv.exe")
-    os.makedirs(os.path.join(TOOLS_FOLDER, "DirectXTex"))
+    os.makedirs(os.path.join(TOOLS_FOLDER, "DirectXTex"), exist_ok=True)
     latest_texconv_release = get_github_release("microsoft", "DirectXTex")
-    if latest_texconv_release and versions.get("texconv_release", "0.0") != latest_texconv_release[0]:
+    if latest_texconv_release and versions.get("texconv", "0.0") != latest_texconv_release[0]:
         DownloadDialog(f"Downloading texconv", "https://github.com/microsoft/DirectXTex/releases/latest/download/texconv.exe", texconv_path).exec()
-        versions["texconv_release"] = latest_texconv_release[0]
+        versions["texconv"] = latest_texconv_release[0]
 
     witchy_dir = os.path.join(TOOLS_FOLDER, "witchybnd")
     os.makedirs(witchy_dir, exist_ok=True)
     latest_witchy_release = get_github_release("ividyon", "WitchyBND")
-    if latest_witchy_release and versions.get("witchy_release", "0.0") != latest_witchy_release[0]:
+    if latest_witchy_release and versions.get("witchy", "0.0") != latest_witchy_release[0]:
         zip_path = os.path.join(witchy_dir, "witchy.zip")
         DownloadDialog(f"Downloading WitchyBND", latest_witchy_release[1][0]["browser_download_url"], zip_path).exec()
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(witchy_dir)
 
-        versions["witchy_release"] = latest_witchy_release[0]
+        versions["witchy"] = latest_witchy_release[0]
 
     ffdec_dir = os.path.join(TOOLS_FOLDER, "ffdec")
     os.makedirs(ffdec_dir, exist_ok=True)
     ffdec_release = get_github_release("jindrapetrik", "jpexs-decompiler", tag="version20.1.0")
-    if ffdec_release and versions.get("ffdec_release", "0.0") != ffdec_release[0]:
+    if ffdec_release and versions.get("ffdec", "0.0") != ffdec_release[0]:
         zip_path = os.path.join(ffdec_dir, "ffdec.zip")
         download_url = None
         for asset in ffdec_release[1]:
@@ -438,7 +438,7 @@ def check_tools():
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(ffdec_dir)
 
-        versions["ffdec_release"] = ffdec_release[0]
+        versions["ffdec"] = ffdec_release[0]
 
     game_data_zip = os.path.join(ARENA_MAKER_DATA_FOLDER, "game_data.zip")
     if os.path.exists(game_data_zip):
