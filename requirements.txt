@@ -7,3 +7,4 @@ soundfile
 pillow
 toml
 platformdirs
+chardet

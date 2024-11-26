@@ -11,6 +11,7 @@ from typing import Union, List
 import numpy
 import platformdirs
 import xmltodict
+import chardet
 from PIL import ImageDraw, ImageFont, ImageColor, Image, ImageOps, ImageFilter
 
 import soundfile as sf
@@ -74,7 +75,7 @@ class SoundbankEditor:
         self.soundbank_dir = os.path.join(os.path.dirname(soundbank_path), os.path.splitext(soundbank_path)[0])
         self.soundbank_json_path = os.path.join(self.soundbank_dir, "soundbank.json")
 
-        self.soundbank_data = json.load(open(self.soundbank_json_path, "r"))
+        self.soundbank_data = json.load(open_text_smart(self.soundbank_json_path))
         self.sound_object_list = self.soundbank_data["sections"][1]["body"]["HIRC"]["objects"]
 
         self.base_play_event = copy.deepcopy(self.get_object(f"Play_v{600000000 + base_talk_accountid * 1000 + 100}"))
@@ -262,8 +263,14 @@ class DummySignal:
     def emit(self, arg, arg2):
         return arg
 
+#I love encoding
+def open_text_smart(filename):
+    with open(filename, 'rb') as rawdata:
+        result = chardet.detect(rawdata.read())
+    return open(filename, 'r', encoding=result['encoding'])
+
 def parse_xml_file(filepath):
-    with open(filepath, 'r', encoding="utf-8") as file:
+    with open_text_smart(filepath) as file:
         xml_data = file.read()
     first_tag_index = xml_data.find('<')
     if first_tag_index != -1:
@@ -360,7 +367,7 @@ def process_image(subfolder_path, img_path, target_width, target_height, pad_x=0
 
 
 def compile_folder(progress_signal=None):
-    with open("config.json", "r") as f:
+    with open_text_smart("config.json") as f:
         config = json.load(f)
 
     if not progress_signal:
@@ -427,7 +434,7 @@ def compile_folder(progress_signal=None):
 
         # Load data.json as a dictionary
         data_file = os.path.join(subfolder_path, "data.json")
-        with open(data_file, "r") as file:
+        with open_text_smart(data_file) as file:
             fight_data = json.load(file)
 
         file_data = fight_data["fileData"]
@@ -594,7 +601,7 @@ def compile_folder(progress_signal=None):
     tpf_path = os.path.join(paths['mod_directory'], tpf_path)
     run_witchy(tpf_path)
 
-    old_witchy_content = open(os.path.join(tpf_dir, "_witchy-tpf.xml")).read().replace("DCX_KRAK_MAX", "DCX_DFLT_11000_44_9_15")
+    old_witchy_content = open_text_smart(os.path.join(tpf_dir, "_witchy-tpf.xml")).read().replace("DCX_KRAK_MAX", "DCX_DFLT_11000_44_9_15")
     open(os.path.join(tpf_dir, "_witchy-tpf.xml"), "w", encoding="utf-8").write(old_witchy_content)
 
     # Decal thumbnail
@@ -702,7 +709,7 @@ def process_custom_logic_file(lua_file, npc_chara_id):
     os.makedirs(luabnd_dir, exist_ok=True)
     shutil.copy(lua_file, os.path.join(luabnd_dir, f"{npc_chara_id}_logic.lua"))
 
-    curr_lua_content = open(lua_file_dest, "r").read()
+    curr_lua_content = open_text_smart(lua_file_dest).read()
     curr_lua_content = curr_lua_content.replace(current_id, str(npc_chara_id))
     open(lua_file_dest, "w", encoding="utf-8").write(curr_lua_content)
 

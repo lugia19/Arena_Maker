@@ -391,9 +391,13 @@ def check_tools():
     if not os.path.exists(VERSIONS_FILE):
         with open(VERSIONS_FILE, "w") as fp:
             json.dump({}, fp)
-
-    with open(VERSIONS_FILE, 'r') as file:
-        versions = json.load(file)
+    try:
+        with open(VERSIONS_FILE, 'r') as file:
+            versions = json.load(file)
+    except json.decoder.JSONDecodeError:
+        versions = {}
+        with open(VERSIONS_FILE, "w") as fp:
+            json.dump({}, fp)
 
     rewwise_dir = os.path.join(TOOLS_FOLDER, "rewwise")
 
@@ -423,6 +427,14 @@ def check_tools():
 
         versions["witchy"] = latest_witchy_release[0]
 
+    # Let's just make sure the paramdex version is corrected...
+    # 1_07_1_0016L
+    paramdex_version_path = os.path.join(witchy_dir, "Assets", "Paramdex", "AC6", "Upgrader", "version.txt")
+    current_paramdex_version = open(paramdex_version_path).read().strip()
+    if current_paramdex_version == "1_07_1_0016L":
+        with open(paramdex_version_path, "w") as fp:
+            fp.write("1_07_2_0018")
+
     ffdec_dir = os.path.join(TOOLS_FOLDER, "ffdec")
     os.makedirs(ffdec_dir, exist_ok=True)
     ffdec_release = get_github_release("jindrapetrik", "jpexs-decompiler", tag="version20.1.0")
@@ -443,11 +455,13 @@ def check_tools():
     game_data_zip = os.path.join(ARENA_MAKER_DATA_FOLDER, "game_data.zip")
     if os.path.exists(game_data_zip):
         with open(game_data_zip, 'rb') as file:
-            game_data_hash = hashlib.sha1(file.read()).hexdigest()
+            game_data_hash = hashlib.sha1(file.read()).hexdigest().lower()
     else:
         game_data_hash = None
 
-    expected_hash = "d31015d76a13165c66ea58276cfe04449de3f577"
+    json.dump(versions, open(VERSIONS_FILE, "w"), indent=4)
+
+    expected_hash = "4D60E88729C9F89A2C8C6A2296CED7E7061D4D60".lower()
     download_url = "https://f004.backblazeb2.com/file/lugia19/game_data.zip"
     if not game_data_hash or game_data_hash != expected_hash:
         DownloadDialog(f"Downloading base game files...", download_url, game_data_zip).exec()
