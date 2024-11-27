@@ -385,6 +385,50 @@ def get_github_release(repo_owner, repo_name, tag=None) -> (str, list):
     else:
         return None
 
+
+def witchy_param_version_hack(witchy_dir):
+    paramdex_path = os.path.join(witchy_dir, "Assets", "Paramdex")
+    version_relative_path = os.path.join("AC6", "Upgrader", "version.txt")
+    version_full_path = os.path.join(paramdex_path, version_relative_path)
+    zip_path = os.path.join(witchy_dir, "Assets", "Paramdex.zip")
+
+    # Update unzipped version if it exists
+    if os.path.exists(version_full_path):
+        with open(version_full_path) as fp:
+            current_version = fp.read().strip()
+            if current_version == "1_07_1_0016L":
+                with open(version_full_path, "w") as wp:
+                    wp.write("1_07_2_0018")
+
+    # Update version in zip if it exists
+    if os.path.exists(zip_path):
+        temp_dir = os.path.join(witchy_dir, "temp_zip")
+        try:
+            # Extract zip to temp directory
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+            # Update version in extracted files
+            temp_version_path = os.path.join(temp_dir, version_relative_path)
+            if os.path.exists(temp_version_path):
+                with open(temp_version_path) as fp:
+                    current_version = fp.read().strip()
+                    if current_version == "1_07_1_0016L":
+                        with open(temp_version_path, "w") as wp:
+                            wp.write("1_07_2_0018")
+            # Create new zip file
+            os.remove(zip_path)  # Remove old zip
+            with zipfile.ZipFile(zip_path, 'w') as new_zip:
+                # Walk through the temporary directory and add all files
+                for root, _, files in os.walk(temp_dir):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        arc_name = os.path.relpath(file_path, temp_dir)
+                        new_zip.write(file_path, arc_name)
+        finally:
+            # Clean up temp directory
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+
 def check_tools():
     os.makedirs(TOOLS_FOLDER, exist_ok=True)
 
@@ -400,6 +444,7 @@ def check_tools():
             json.dump({}, fp)
 
     rewwise_dir = os.path.join(TOOLS_FOLDER, "rewwise")
+    os.makedirs(rewwise_dir, exist_ok=True)
 
     latest_rewwise_release = get_github_release("vswarte", "rewwise")
     if latest_rewwise_release and versions.get("rewwise", "0.0") != latest_rewwise_release[0]:
@@ -429,11 +474,7 @@ def check_tools():
 
     # Let's just make sure the paramdex version is corrected...
     # 1_07_1_0016L
-    paramdex_version_path = os.path.join(witchy_dir, "Assets", "Paramdex", "AC6", "Upgrader", "version.txt")
-    current_paramdex_version = open(paramdex_version_path).read().strip()
-    if current_paramdex_version == "1_07_1_0016L":
-        with open(paramdex_version_path, "w") as fp:
-            fp.write("1_07_2_0018")
+    witchy_param_version_hack(witchy_dir)
 
     ffdec_dir = os.path.join(TOOLS_FOLDER, "ffdec")
     os.makedirs(ffdec_dir, exist_ok=True)
