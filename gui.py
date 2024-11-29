@@ -483,7 +483,7 @@ def check_tools():
         zip_path = os.path.join(ffdec_dir, "ffdec.zip")
         download_url = None
         for asset in ffdec_release[1]:
-            if re.match("ffdec(\d+\.)+zip", asset["name"]):
+            if re.match("ffdec_?(\d+\.)+zip", asset["name"]):
                 download_url = asset["browser_download_url"]
                 break
         if download_url:
@@ -491,7 +491,7 @@ def check_tools():
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(ffdec_dir)
 
-        versions["ffdec"] = ffdec_release[0]
+            versions["ffdec"] = ffdec_release[0]
 
     game_data_zip = os.path.join(ARENA_MAKER_DATA_FOLDER, "game_data.zip")
     if os.path.exists(game_data_zip):
